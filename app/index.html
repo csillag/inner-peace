@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" ng-app="myApp">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <title>My AngularJS App</title>
@@ -16,10 +16,16 @@
   <div>Angular seed app: v<span app-version></span></div>
 
   <script src="lib/angular/angular.js"></script>
-  <script src="js/app.js"></script>
-  <script src="js/services.js"></script>
-  <script src="js/controllers.js"></script>
-  <script src="js/filters.js"></script>
-  <script src="js/directives.js"></script>
+
+  <!-- Allows for coffeescript compiling on the fly.                                    -->
+  <!-- Not recommended for production use. See http://coffeescript.org/#scripts.        -->
+  <script src="lib/coffeescript/coffee-script.js"></script>
+
+  <script src="coffee/services.coffee" type="text/coffeescript"></script>
+  <script src="coffee/controllers.coffee" type="text/coffeescript"></script>
+  <script src="coffee/filters.coffee" type="text/coffeescript"></script>
+  <script src="coffee/directives.coffee" type="text/coffeescript"></script>
+  <script src="coffee/app.coffee" type="text/coffeescript"></script>
+
 </body>
 </html>

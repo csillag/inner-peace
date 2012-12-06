@@ -3,6 +3,8 @@
 
 This project is a straight [coffeescript](http://coffeescript.org/) port of the [angular-seed](https://github.com/angular/angular-seed) project.
 
+I (csillag) just took [this project](https://github.com/slavus/angular-seed-coffeescript), and merged the newest changes from [upstream](https://github.com/angular/angular-seed) - which means roughly bringing the project up from angular 1.0.1 to 1.0.3. (Except the testing-related changes, which I ignored for now.)
+
 ## Status
 
 Ready for use.
@@ -17,3 +19,4 @@ Ready for use.
 
 * Bring back index-async.html
 * Port tests to coffeescript (currently still js)
+* Merge all test-related changes from angular-seed introduced since Angular version 1.0.1

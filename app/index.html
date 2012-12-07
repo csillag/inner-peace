@@ -26,7 +26,7 @@
   
   <div ng-controller="SearchController">
     <div id="source-spec">
-      HTML input source:
+      <h2>HTML input source:</h2>
       <select ng-model="sourceMode">
 	<option value="local">Input HTML source manually</option>
 	<option value="url">Fetch HTML from URL</option>
@@ -49,10 +49,8 @@
       </div>
     </div>
 
-
-
     <div class="shown-{{sourceMode=='local' && renderSource != null}}">
-      <p>DOM rendered as:</p>
+      <h2>DOM rendered as:</h2>
       <div id="rendered-dom" ng-bind-html-unsafe="renderSource"></div>
     </div>
     
@@ -62,8 +60,8 @@
       <button ng-click="scan()">Scan!</button>
     </div>
     
-    <div class="shown-{{mappings.length>0}}">
-      <p>Collected string indices:</p>
+    <div id="mappings-list" class="shown-{{mappings.length>0}}">
+      <h2>Collected string indices:</h2>
       <input type="checkbox" ng-model="atomicOnly">Show only atomic elements</checkbox>
       <table border="1">
 	<thead>

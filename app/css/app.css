@@ -34,7 +34,7 @@
     height: 10 em;
 }
 
-#source-spec, #rendered-dom, #inner-text {
+#source-spec, #rendered-dom, #inner-text, #mappings-list {
     border: 1px solid green;
     width: 50%;
     padding: 1em;

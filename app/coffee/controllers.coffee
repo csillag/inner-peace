@@ -23,6 +23,7 @@ class SearchController
     $scope.render = ->
       $scope.renderSource = $scope.localSource
       $scope.paths = []
+      $scope.mappings = []
 
       # wait for the browser to render the DOM for the new HTML
       $timeout ->

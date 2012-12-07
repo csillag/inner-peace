@@ -78,6 +78,7 @@ StaticServlet.MimeMap = {
   'xml': 'application/xml',
   'json': 'application/json',
   'js': 'application/javascript',
+  'coffee': 'application/javascript',
   'jpg': 'image/jpeg',
   'jpeg': 'image/jpeg',
   'gif': 'image/gif',

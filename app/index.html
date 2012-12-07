@@ -13,6 +13,7 @@
 
   <!-- Allows for coffeescript compiling on the fly.                                    -->
   <!-- Not recommended for production use. See http://coffeescript.org/#scripts.        -->
+  <script src="lib/diff_match_patch/diff_match_patch.js"></script>
   <script src="lib/coffeescript/coffee-script.js"></script>
   <script src="lib/domsearcher/domsearcher.coffee" type="text/coffeescript"></script>
 
@@ -25,14 +26,15 @@
   <h1>The Search for Inner[Text] Peace</h1>
   
   <div ng-controller="SearchController">
-    <div id="source-spec">
-      <h2>HTML input source:</h2>
-      <select ng-model="sourceMode">
-	<option value="local">Input HTML source manually</option>
-	<option value="url">Fetch HTML from URL</option>
-	<option value="page">Use this page</option>
-      </select>
+    HTML input source:
+    <select ng-model="sourceMode">
+      <option value="local">Input HTML source manually</option>
+      <option value="url">Fetch HTML from URL</option>
+      <option value="page">Use this page</option>
+    </select>
 
+
+    <div id="source-spec">
       <div class="shown-{{sourceMode=='local'}}">
 	<p>Test html source:</p>
 	<textarea ng-model="localSource" id="source-editor"></textArea>
@@ -84,6 +86,45 @@
 	</tbody>
       </table>
     </div>
+
+    <div id="search-input" class="shown-{{mappings.length>0}}">
+      <form name="SearchForm">
+	Search term:
+	<input type="text" ng-model="searchTerm" required="true">
+	Search position:
+	<input type="number" ng-model="searchPos" min="0">
+	<button ng-click="search()">Search!</button>
+      </form>
+    </div>
+
+    <div id="search-results" class="shown-{{searchResults.length>0}}">
+      {{searchResults}}
+      <p>Involved elements:</p>
+      <table border="1">
+	<thead>
+	  <tr>
+	    <th>Path</th>
+	    <th>Text</th>
+	    <th>Full</th>
+	    <th>From</th>
+	    <th>Till</th>
+	  </tr>
+	</thead>
+	<tbody>
+	  <tr ng-repeat="match in detailedResults">
+	    <td>{{match.path}}</td>
+	    <td>{{match.text}}</td>
+	    <td>{{match.full | booleanCheckmark}}</td>
+	    <td>{{match.start}}</td>
+	    <td>{{match.end}}</td>
+	  </tr>
+	</tbody>
+      </table>
+
+    </div>
+
+
+
     
   </div>
 </body>

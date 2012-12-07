@@ -25,8 +25,6 @@ class window.DomSearcher
     xpath = xpath.replace /\/$/, ''
     xpath
 
-
-
   collectPathsForElement: (startElement, rootElement, results = []) ->
     if startElement.nodeType in @ignoredNodeTypes and results.length > 0 then return
     results.push @getPathTo startElement, rootElement
@@ -75,21 +73,20 @@ class window.DomSearcher
         console.log "Encountered node type " + node.nodeType + ". Not sure how to handle this."
         return ""
 
-  getPathInnerText: (path, rootElement = document) ->
+  getPathInnerText: (path, rootId = null) ->
+    rootElement = if rootId? then document.getElementById rootId else document        
     @getNodeInnerText @lookUpNode path, rootElement
 
   collectStrings: (node, parentPath, parentText = null, parentIndex = 0, index = 0, results = []) ->
-    console.log "Doing " + parentPath     
+#    console.log "Doing " + parentPath     
     innerText = @getNodeInnerText node
 
     if not innerText? or innerText is "" then return index
 
     if parentText?
       startIndex = parentText.indexOf innerText, index
-#      console.log "Found innerText '" + innerText + "' in parentText at position " + startIndex + ". (index was " + index + ".)"
     else
       startIndex = index
-#      console.log "Not parent text, so using index (" + parentIndex + ") as startIndex."
 
     if startIndex is -1 then return index
     endIndex = startIndex + innerText.length
@@ -118,6 +115,34 @@ class window.DomSearcher
         i++
 
     endIndex
+
+  regions_overlap: (start1, end1, start2, end2) ->
+    start1 < end2 and start2 < end1
+ 
+  collectElements: (mappings, startPos, endPos) ->
+    matches = []
+    for mapping in mappings when mapping.atomic and @regions_overlap mapping.start, mapping.end, startPos, endPos
+      do (mapping) ->
+        match =
+          path: mapping.path
+          text: mapping.innerText
+        if startPos <= mapping.start and mapping.end <= endPos
+#           console.log mapping.path + " - full"
+          match["full"] = true
+        else if startPos <= mapping.start
+          match["end"] = endPos - mapping.start
+#           console.log mapping.path + " - [:" + (endPos - mapping.start) + "]"
+        else if mapping.end <= endPos
+          match["start"] = startPos - mapping.start
+#           console.log mapping.path + " - [" + (startPos - mapping.start) + ":]"        
+        else
+          match["start"] = startPos - mapping.start
+          match["end"] = endPos - mapping.start
+   #           console.log mapping.path + " - [" + (startPos - mapping.start) + ":" + (endPos - mapping.start) + "]"
+
+        matches.push match
+        
+    matches    
 
   collectContents: (path, rootId) ->
     rootElement = document.getElementById rootId

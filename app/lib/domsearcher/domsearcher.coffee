@@ -36,8 +36,10 @@ class window.DomSearcher
         i++
     results
 
+  getBody: -> (document.getElementsByTagName "body")[0]
+        
   collectSubPaths: (startId = null, rootId = null) ->
-    startElement = if startId? then document.getElementById rootId else (document.getElementsByTagName "body")[0]
+    startElement = if startId? then document.getElementById rootId else @getBody()
     rootElement = if rootId? then document.getElementById rootId else document
     @collectPathsForElement startElement, rootElement
 
@@ -76,6 +78,9 @@ class window.DomSearcher
   getPathInnerText: (path, rootId = null) ->
     rootElement = if rootId? then document.getElementById rootId else document        
     @getNodeInnerText @lookUpNode path, rootElement
+
+  getBodyInnerText: ->
+    @getNodeInnerText @getBody()
 
   collectStrings: (node, parentPath, parentText = null, parentIndex = 0, index = 0, results = []) ->
 #    console.log "Doing " + parentPath     

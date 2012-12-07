@@ -48,6 +48,7 @@
       <div class="shown-{{sourceMode=='url'}}">
 	URL to fetch:
 	<input ng-model="remoteURL">
+	<p>(I have desabled this, because could not sort out same-origin policy issues for now.)</p>
       </div>
     </div>
 
@@ -99,33 +100,30 @@
 
     <div id="search-results" class="shown-{{searchResults.length>0}}">
       {{searchResults}}
-      <p>Involved elements:</p>
-      <table border="1">
-	<thead>
-	  <tr>
-	    <th>Path</th>
-	    <th>Text</th>
-	    <th>Full</th>
-	    <th>From</th>
-	    <th>Till</th>
-	  </tr>
-	</thead>
-	<tbody>
-	  <tr ng-repeat="match in detailedResults">
-	    <td>{{match.path}}</td>
-	    <td>{{match.text}}</td>
-	    <td>{{match.full | booleanCheckmark}}</td>
-	    <td>{{match.start}}</td>
-	    <td>{{match.end}}</td>
-	  </tr>
-	</tbody>
-      </table>
-
+      <div id="search-matching-elements" class="shown-{{detailedResults.length>0}}">
+	<p>Involved elements:</p>
+	<table border="1">
+	  <thead>
+	    <tr>
+	      <th>Path</th>
+	      <th>Text</th>
+	      <th>Full</th>
+	      <th>From</th>
+	      <th>Till</th>
+	    </tr>
+	  </thead>
+	  <tbody>
+	    <tr ng-repeat="match in detailedResults">
+	      <td>{{match.path}}</td>
+	      <td>{{match.text}}</td>
+	      <td>{{match.full | booleanCheckmark}}</td>
+	      <td>{{match.start}}</td>
+	      <td>{{match.end}}</td>
+	    </tr>
+	  </tbody>
+	</table>
+      </div>
     </div>
-
-
-
-    
   </div>
 </body>
 </html>

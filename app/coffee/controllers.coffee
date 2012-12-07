@@ -45,29 +45,30 @@ class SearchController
           $scope.mappings = domSearcher.collectContents $scope.selectedPath, $scope.rootId
           $scope.searchResults = null
         when "page"
+          $scope.corpus = domSearcher.getBodyInnerText()
           $scope.mappings = domSearcher.collectContents $scope.selectedPath
           $scope.searchResults = null        
         else
           alert "Not supported"
 
     $scope.search = ->
-      switch $scope.sourceMode
-        when "local"
-#          console.log "Corpus is: " + $scope.corpus
-#          console.log "Search term is: " + $scope.searchTerm
-#          console.log "Search position is: " + $scope.searchPos
-          startIndex = fancyMatcher.match_main $scope.corpus, $scope.searchTerm, $scope.searchPos
-          if startIndex > -1
-            matchLength = $scope.searchTerm.length
-            match = $scope.corpus.substr startIndex, matchLength
-            $scope.searchResults = "Match found at position #" + startIndex + "." + if match is $scope.searchTerm then " (Exact match.)" else " (Found this: '" + match + "')"
-            $scope.detailedResults = domSearcher.collectElements $scope.mappings, startIndex, startIndex + matchLength
-          else
-            $scope.searchResults = "No match."
-        when "page"
-          alert "Not supported"
-        else
-          alert "Not supported"
+      startIndex = fancyMatcher.match_main $scope.corpus, $scope.searchTerm, $scope.searchPos
+      if startIndex > -1
+        matchLength = $scope.searchTerm.length
+        match = $scope.corpus.substr startIndex, matchLength
+        $scope.searchResults = "Match found at position #" + startIndex + "." + if match is $scope.searchTerm then " (Exact match.)" else " (Found this: '" + match + "')"
+        $scope.detailedResults = domSearcher.collectElements $scope.mappings, startIndex, startIndex + matchLength
+      else
+        $scope.searchResults = "No match."
+        $scope.detailedResults = []
+        
+#      switch $scope.sourceMode
+#        when "local"
+#
+#        when "page"
+#          alert "Not supported"
+#        else
+#          alert "Not supported"
 
 angular.module('innerPeace.controllers', [])
   .controller('SearchController', SearchController)

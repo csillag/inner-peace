@@ -2,19 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>My AngularJS App</title>
+  <title>The Search For Inner[Text] Peace</title>
   <link rel="stylesheet" href="css/app.css"/>
 </head>
 <body>
-  <ul class="menu">
-    <li><a href="#/view1">view1</a></li>
-    <li><a href="#/view2">view2</a></li>
-  </ul>
-
-  <div ng-view></div>
-
-  <div>Angular seed app: v<span app-version></span></div>
-
   <script src="lib/angular/angular.js"></script>
   <!-- In production use:
   <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.0.3/angular.min.js"></script>
@@ -23,6 +14,7 @@
   <!-- Allows for coffeescript compiling on the fly.                                    -->
   <!-- Not recommended for production use. See http://coffeescript.org/#scripts.        -->
   <script src="lib/coffeescript/coffee-script.js"></script>
+  <script src="lib/domsearcher/domsearcher.coffee" type="text/coffeescript"></script>
 
   <script src="coffee/services.coffee" type="text/coffeescript"></script>
   <script src="coffee/controllers.coffee" type="text/coffeescript"></script>
@@ -30,5 +22,71 @@
   <script src="coffee/directives.coffee" type="text/coffeescript"></script>
   <script src="coffee/app.coffee" type="text/coffeescript"></script>
 
+  <h1>The Search for Inner[Text] Peace</h1>
+  
+  <div ng-controller="SearchController">
+    <div id="source-spec">
+      HTML input source:
+      <select ng-model="sourceMode">
+	<option value="local">Input HTML source manually</option>
+	<option value="url">Fetch HTML from URL</option>
+	<option value="page">Use this page</option>
+      </select>
+
+      <div class="shown-{{sourceMode=='local'}}">
+	<p>Test html source:</p>
+	<textarea ng-model="localSource" id="source-editor"></textArea>
+	<button ng-click="render()">Render it!</button>
+      </div>
+
+      <div class="shown-{{sourceMode=='page'}}">
+	<p>OK, so you want to test out the stuff on this very page.</p>
+      </div>
+      
+      <div class="shown-{{sourceMode=='url'}}">
+	URL to fetch:
+	<input ng-model="remoteURL">
+      </div>
+    </div>
+
+
+
+    <div class="shown-{{sourceMode=='local' && renderSource != null}}">
+      <p>DOM rendered as:</p>
+      <div id="rendered-dom" ng-bind-html-unsafe="renderSource"></div>
+    </div>
+    
+    <div class="shown-{{paths.length>0}}">
+      Select DOM element to scan:
+      <select ng-model="selectedPath" ng-options="path for path in paths"></select>
+      <button ng-click="scan()">Scan!</button>
+    </div>
+    
+    <div class="shown-{{mappings.length>0}}">
+      <p>Collected string indices:</p>
+      <input type="checkbox" ng-model="atomicOnly">Show only atomic elements</checkbox>
+      <table border="1">
+	<thead>
+	  <tr>
+	    <th>Path</th>
+	    <th>Text</th>
+	    <th>Start index</th>
+	    <th>End index</th>
+	    <th class="shown-{{!atomicOnly}}">Atomic</th>
+	  </tr>
+	</thead>
+	<tbody>
+	  <tr ng-repeat="mapping in mappings" class="shown-{{!atomicOnly || mapping.atomic}}">
+	    <td>{{mapping.path}}</td>
+	    <td>"{{mapping.innerText}}"</td>
+	    <td>{{mapping.start}}</td>
+	    <td>{{mapping.end}}</td>
+	    <td class="shown-{{!atomicOnly}}">{{mapping.atomic | booleanCheckmark}}</td>
+	  </tr>
+	</tbody>
+      </table>
+    </div>
+    
+  </div>
 </body>
 </html>

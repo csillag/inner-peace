@@ -28,3 +28,19 @@
   content: "";
   padding: 0;
 }
+
+#source-editor {
+    width: 100%;
+    height: 10 em;
+}
+
+#source-spec, #rendered-dom, #inner-text {
+    border: 1px solid green;
+    width: 50%;
+    padding: 1em;
+}
+
+
+.shown-false {
+    display: none;
+}

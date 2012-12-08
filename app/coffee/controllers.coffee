@@ -4,6 +4,13 @@ class SearchController
   this.$inject = ['$scope', '$timeout', '$filter', 'domSearcher']
   constructor: ($scope, $timeout, $filter, domSearcher) ->
 
+    $scope.cleanResults = ->
+      @paths = []
+      @mappings = []
+      @canSearch = false
+      @searchResults = null
+      @detailedResults = null
+
     $scope.init = ->
       @domSearcher = domSearcher.getInstance()  
       @rootId = "rendered-dom" #this is ID of the DOM element we use for rendering the demo HTML
@@ -13,69 +20,43 @@ class SearchController
       @searchTerm = "text text"
       @searchPos = 0
       @$watch 'sourceMode', (newValue, oldValue) =>
-        @paths = []
-        @mappings = []
-        @searchResults = null
+        @cleanResults()
         switch @sourceMode
           when "local"
-            console.log "Source mode is now local."        
+            @domSearcher.setRootId @rootId
           when "page"
             @renderSource = null
-            $timeout -> @checkPage()
+            @domSearcher.setRealRoot()
+            @checkPathsDelayed()
+        
           when "url"
             @renderSource = null        
 
     $scope.init()
 
+    $scope.checkPaths = ->
+      @paths = @domSearcher.getAllPaths()
+      @selectedPath = @paths[0]
+      @canSearch = true
+
+    $scope.checkPathsDelayed = ->
+      # wait for the browser to render the DOM for the new HTML
+      $timeout => @checkPaths()  
+
     $scope.render = ->
       @renderSource = @localSource
-      @paths = []
-      @mappings = []
-      @searchResults = null
-      # wait for the browser to render the DOM for the new HTML
-      $timeout => @checkRendered()
-
-    $scope.checkRendered = ->
-      @paths = @domSearcher.collectSubPaths @rootId, @rootId
-      @selectedPath = @paths[0]
-
-    $scope.checkPage = ->
-      @paths = @domSearcher.collectPaths()
-      @selectedPath = @paths[0]
-
-    $scope.scan = ->
-      switch @sourceMode
-        when "local"
-          @corpus = @domSearcher.getPathInnerText @selectedPath, @rootId
-          @mappings = @domSearcher.collectContents @selectedPath, @rootId
-          @searchResults = null
-        when "page"
-          @corpus = @domSearcher.getBodyInnerText()
-          @mappings = @domSearcher.collectContents @selectedPath
-          @searchResults = null        
-        else
-          alert "Not supported"
+      @cleanResults()
+      @checkPathsDelayed()
 
     $scope.search = ->
-      searchResult = @domSearcher.search @corpus, @searchTerm, @searchPos
-      if searchResult?
-        startIndex = searchResult.start
-        endIndex = searchResult.end
-        matchLength = endIndex - startIndex
-        match = @corpus.substr startIndex, matchLength
-        @searchResults = "Match found at position [" + startIndex + ":" + endIndex + "]." + if match is @searchTerm then " (Exact match.)" else " (Found this: '" + match + "')"
-        @detailedResults = @domSearcher.collectElements @mappings, startIndex, endIndex
-      else
-        @searchResults = "No match."
-        @detailedResults = []
-        
-#      switch @sourceMode
-#        when "local"
-#
-#        when "page"
-#          alert "Not supported"
-#        else
-#          alert "Not supported"
+     sr = @domSearcher.search @selectedPath, @searchTerm, @searchPos
+     if sr?
+       @searchResults = if sr.found is @searchTerm then " (Exact match.)" else " (Found this: '" + sr.found + "')"
+       @detailedResults = sr.nodes
+     else
+       @searchResults = "Pattern not found."
+       @detailedResults = []
+
 
 angular.module('innerPeace.controllers', [])
   .controller('SearchController', SearchController)

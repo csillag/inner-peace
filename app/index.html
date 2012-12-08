@@ -58,12 +58,6 @@
       <div id="rendered-dom" ng-bind-html-unsafe="renderSource"></div>
     </div>
     
-    <div class="shown-{{paths.length>0}}">
-      Select DOM element to scan:
-      <select ng-model="selectedPath" ng-options="path for path in paths"></select>
-      <button ng-click="scan()">Scan!</button>
-    </div>
-    
     <div id="mappings-list" class="shown-{{mappings.length>0}}">
       <h2>Collected string indices:</h2>
       <input type="checkbox" ng-model="atomicOnly">Show only atomic elements</checkbox>
@@ -89,8 +83,10 @@
       </table>
     </div>
 
-    <div id="search-input" class="shown-{{mappings.length>0}}">
+    <div id="search-input" class="shown-{{canSearch}}">
       <form name="SearchForm">
+        DOM element to scan:
+	<select ng-model="selectedPath" ng-options="path for path in paths"></select>
 	Search term:
 	<input type="text" ng-model="searchTerm" required="true">
 	Search position:
@@ -99,7 +95,7 @@
       </form>
     </div>
 
-    <div id="search-results" class="shown-{{searchResults.length>0}}">
+    <div id="search-results" class="shown-{{searchResults.length>0 || detailedResults.length>0}}">
       {{searchResults}}
       <div id="search-matching-elements" class="shown-{{detailedResults.length>0}}">
 	<p>Involved elements:</p>

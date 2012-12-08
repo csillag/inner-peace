@@ -1,56 +1,92 @@
 class window.DomSearcher
   constructor: (fancyMatcher) -> @fancyMatcher = fancyMatcher
 
-  getProperNodeName: (element) ->
-    nodeName = element.nodeName
+  # ===== Public methods =======
+
+  # To use the module, first you need to configure the root node to use for all operations.
+  # This can be either the full document, or a specific sub-set of it.
+
+  # Consider the whole DOM tree
+  setRealRoot: ->
+    @rootNode = document
+    @pathStartNode = @getBody() 
+        
+  # Consider the sub-tree beginning with this node
+  setRootNode: (rootNode) -> @pathStartNode = @rootNode = rootNode    
+
+  # Consider the sub-tree beginning with the node whose ID was given
+  setRootId: (rootId) -> @setRootNode document.getElementById rootId
+
+  # After you have configured the root node to use, you can query the available paths
+  getAllPaths: -> @collectPathsForNode @pathStartNode
+
+  # Use this to search for text
+  #
+  # Parameters:
+  #  searchPath: the sub-tree inside the DOM you want to search.
+  #    Must be an XPath expression, relative to the configured root node.
+  #    You can check for valid input values using the getAllPaths method above.
+  #  searchPattern: what to search for
+  #  searchPos: where do we expect to find it
+  #  matchDistance and matchThreshold: fine-tuning parameters for the text matching
+  #  library. See http://code.google.com/p/google-diff-match-patch/wiki/API for details.
+  #
+  # The returned object will have "start", "end", "found" and "nodes" fields.
+  # start and end specify where the pattern was found; "found" is the matching slice.
+  # Nodes is the list of matching nodes, with details about the matches.
+  # 
+  # If no match is found, null is returned.  # 
+  search: (searchPath, searchPattern, searchPos, matchDistance = 1000, matchThreshold = 0.5) ->
+    @fancyMatcher.setMatchDistance matchDistance
+    @fancyMatcher.setMatchThreshold matchThreshold
+    @corpus = @getNodeInnerText @lookUpNode searchPath
+    sr = @fancyMatcher.search @corpus, searchPattern, searchPos
+    if sr?
+      mappings = @collectMappings searchPath                
+      matches = []
+      for mapping in mappings when mapping.atomic and @regions_overlap mapping.start, mapping.end, sr.start, sr.end
+        do (mapping) ->
+          match =
+            path: mapping.path
+            text: mapping.innerText
+          if sr.start <= mapping.start and mapping.end <= sr.end
+            match["full"] = true
+          else if sr.start <= mapping.start
+            match["end"] = sr.end - mapping.start
+          else if mapping.end <= sr.end
+            match["start"] = sr.start - mapping.start
+          else
+            match["start"] = sr.start - mapping.start
+            match["end"] = sr.end - mapping.start
+          matches.push match
+      sr.nodes = matches
+    sr
+
+  # ===== Private methods (never call from outside the module) =======
+
+  getProperNodeName: (node) ->
+    nodeName = node.nodeName
     switch nodeName
       when "#text" then return "text()"
       when "#comment" then return "comment()"
       when "#cdata-section" then return "cdata-section()"
       else return nodeName
-                
-  getPathTo: (el, rootElement = document) ->
+
+  getPathTo: (node) ->
     xpath = '';
-    while el != rootElement
+    while node != @rootNode
       pos = 0
-      tempitem2 = el
+      tempitem2 = node
       while tempitem2
-        if tempitem2.nodeName is el.nodeName
+        if tempitem2.nodeName is node.nodeName
           pos++
         tempitem2 = tempitem2.previousSibling
 
-      xpath = (@getProperNodeName el) + (if pos>1 then "[" + pos + ']' else "") + '/' + xpath
-      el = el.parentNode
-    xpath = (if rootElement.ownerDocument? then './' else '/') + xpath
+      xpath = (@getProperNodeName node) + (if pos>1 then "[" + pos + ']' else "") + '/' + xpath
+      node = node.parentNode
+    xpath = (if @rootNode.ownerDocument? then './' else '/') + xpath
     xpath = xpath.replace /\/$/, ''
     xpath
-
-  collectPathsForElement: (startElement, rootElement, results = []) ->
-    if startElement.nodeType in @ignoredNodeTypes and results.length > 0 then return
-    results.push @getPathTo startElement, rootElement
-    if startElement.hasChildNodes
-      children = startElement.childNodes
-      i = 0
-      while i < children.length
-        @collectPathsForElement(children[i], rootElement, results)
-        i++
-    results
-
-  getBody: -> (document.getElementsByTagName "body")[0]
-        
-  collectSubPaths: (startId = null, rootId = null) ->
-    startElement = if startId? then document.getElementById rootId else @getBody()
-    rootElement = if rootId? then document.getElementById rootId else document
-    @collectPathsForElement startElement, rootElement
-
-  collectPaths: -> @collectSubPaths null, null
-
-  lookUpNode: (path, rootElement = document) ->
-    root = rootElement ? document
-    doc = root.ownerDocument ? root
-    results = doc.evaluate path, root, null, 0, null
-    node = results.iterateNext()
-    node
 
   ignoredNodeTypes: [
     Node.ATTRIBUTE_NODE,
@@ -63,6 +99,27 @@ class window.DomSearcher
 #        console.log "Encountered node type " + node.nodeType + ". Not sure how to handle this."
 #        return null
 
+  collectPathsForNode: (node, results = []) ->
+    if node.nodeType in @ignoredNodeTypes and results.length > 0 then return
+    results.push @getPathTo node
+    if node.hasChildNodes
+      children = node.childNodes
+      i = 0
+      while i < children.length
+        @collectPathsForNode(children[i], results)
+        i++
+    results
+
+  getBody: -> (document.getElementsByTagName "body")[0]
+
+  regions_overlap: (start1, end1, start2, end2) -> start1 < end2 and start2 < end1
+
+  lookUpNode: (path) ->
+    doc = @rootNode.ownerDocument ? @rootNode
+    results = doc.evaluate path, @rootNode, null, 0, null
+    node = results.iterateNext()
+    node
+
   getNodeInnerText: (node) ->
     switch node.nodeType
       when Node.ATTRIBUTE_NODE, Node.DOCUMENT_TYPE_NODE, Node.COMMENT_NODE, Node.PROCESSING_INSTRUCTION_NODE
@@ -74,13 +131,6 @@ class window.DomSearcher
       when Node.ENTITY_REFERENCE_NODE, Node.ENTITY_NODE, Node.DOCUMENT_FRAGMENT_NODE, Node.NOTATION_NODE
         console.log "Encountered node type " + node.nodeType + ". Not sure how to handle this."
         return ""
-
-  getPathInnerText: (path, rootId = null) ->
-    rootElement = if rootId? then document.getElementById rootId else document        
-    @getNodeInnerText @lookUpNode path, rootElement
-
-  getBodyInnerText: ->
-    @getNodeInnerText @getBody()
 
   collectStrings: (node, parentPath, parentText = null, parentIndex = 0, index = 0, results = []) ->
 #    console.log "Doing " + parentPath     
@@ -121,41 +171,11 @@ class window.DomSearcher
 
     endIndex
 
-  regions_overlap: (start1, end1, start2, end2) ->
-    start1 < end2 and start2 < end1
- 
-  collectElements: (mappings, startPos, endPos) ->
-    matches = []
-    for mapping in mappings when mapping.atomic and @regions_overlap mapping.start, mapping.end, startPos, endPos
-      do (mapping) ->
-        match =
-          path: mapping.path
-          text: mapping.innerText
-        if startPos <= mapping.start and mapping.end <= endPos
-#           console.log mapping.path + " - full"
-          match["full"] = true
-        else if startPos <= mapping.start
-          match["end"] = endPos - mapping.start
-#           console.log mapping.path + " - [:" + (endPos - mapping.start) + "]"
-        else if mapping.end <= endPos
-          match["start"] = startPos - mapping.start
-#           console.log mapping.path + " - [" + (startPos - mapping.start) + ":]"        
-        else
-          match["start"] = startPos - mapping.start
-          match["end"] = endPos - mapping.start
-   #           console.log mapping.path + " - [" + (startPos - mapping.start) + ":" + (endPos - mapping.start) + "]"
-
-        matches.push match
-        
-    matches    
-
-  collectContents: (path, rootId) ->
-    rootElement = document.getElementById rootId
-    node = @lookUpNode path, rootElement
-
+  collectMappings: (path) ->
+    node = @lookUpNode path
     results = []
     @collectStrings node, path, null, 0, 0, results
     results
 
-  search: (corpus, searchTerm, searchPos) ->
-    @fancyMatcher.search corpus, searchTerm, searchPos
+  collectMatchingNodes: (sr) ->
+

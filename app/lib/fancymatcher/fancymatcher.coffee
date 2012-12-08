@@ -50,16 +50,18 @@ class window.FancyMatcher
   search: (text, pattern, expectedStartLoc = 0) ->
 
     startIndex = @dmp.match_main text, pattern, expectedStartLoc
-    if startIndex?
+    if startIndex > 0
       txet = @_reverse text
       nrettap = @_reverse pattern
       expectedEndLoc = startIndex + pattern.length
       expectedDneLoc = text.length - expectedEndLoc
       dneIndex = @dmp.match_main txet, nrettap, expectedDneLoc
       endIndex = text.length - dneIndex
+      matchLength = endIndex - startIndex
       result =
         start: startIndex
         end: endIndex
+        found: text.substr startIndex, matchLength
     else
       result = null
 

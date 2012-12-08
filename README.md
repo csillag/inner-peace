@@ -1,14 +1,33 @@
 # inner-peace
 ## Experiment about searching for text in the DOM, transcending element boundaries
 
+## What is this
+
+This is an experiment about how to locate text patterns in a DOM, when the match might span
+multiple nodes, and we don't know where to look exactly.
+
+The code traverses the (configured part of) the dom, and collects info about which string
+slice is where. Then it searches for the pattern in the innerText of 
+he (configured part of the) DOM using [google-diff-match-patch](http://code.google.com/p/google-diff-match-patch/)
+(see app/lib/fancymatcher/README.txt for more info about this part.)
+
+When a match is found, it maps in back to DOM elements, using the collected information,
+and it returns info about where to text. (XPath expressions and string indices.)
+
+Optionally, it can also highlight the match in the DOM.
+
+All the DOM analyzing logic is in one CoffeeScript file ( app/lib/domsearcher/domsearcher.coffee )
+
+## How to run
+
 1. run scripts/web-server.js
 2. Go to http://localhost:8000/
 3. Click the buttons, and see what happens.
 
 
-Unsolved problems:
+## Unsolved problems:
 
-1. Hidden nodes.
+-  Hidden nodes.
  
    When the "display" property of a node is set to "none", it's not displayd, so it's content
    does not get into it's parent's innerText.
@@ -25,7 +44,7 @@ Unsolved problems:
 
    This would not break the results, but would add false parts to the selection.
 
-Caveats:
+## Caveats:
 
 - Whitespaces
 

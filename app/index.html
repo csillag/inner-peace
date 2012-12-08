@@ -30,12 +30,11 @@
     HTML input source:
     <select ng-model="sourceMode">
       <option value="local">Input HTML source manually</option>
-      <option value="url">Fetch HTML from URL</option>
       <option value="page">Use this page</option>
+      <option value="sample1">Use sample article 1</option>
     </select>
 
-
-    <div id="source-spec">
+    <div id="source-spec" class="shown-{{sourceModeNeedsInput}}">
       <div class="shown-{{sourceMode=='local'}}">
 	<p>Test html source:</p>
 	<textarea ng-model="localSource" id="source-editor"></textArea>
@@ -45,48 +44,13 @@
       <div class="shown-{{sourceMode=='page'}}">
 	<p>OK, so you want to test out the stuff on this very page.</p>
       </div>
-      
-      <div class="shown-{{sourceMode=='url'}}">
-	URL to fetch:
-	<input ng-model="remoteURL">
-	<p>(I have desabled this, because could not sort out same-origin policy issues for now.)</p>
-      </div>
-    </div>
-
-    <div class="shown-{{sourceMode=='local' && renderSource != null}}">
-      <h2>DOM rendered as:</h2>
-      <div id="rendered-dom" ng-bind-html-unsafe="renderSource"></div>
-    </div>
-    
-    <div id="mappings-list" class="shown-{{mappings.length>0}}">
-      <h2>Collected string indices:</h2>
-      <input type="checkbox" ng-model="atomicOnly">Show only atomic elements</checkbox>
-      <table border="1">
-	<thead>
-	  <tr>
-	    <th>Path</th>
-	    <th>Text</th>
-	    <th>Start index</th>
-	    <th>End index</th>
-	    <th class="shown-{{!atomicOnly}}">Atomic</th>
-	  </tr>
-	</thead>
-	<tbody>
-	  <tr ng-repeat="mapping in mappings" class="shown-{{!atomicOnly || mapping.atomic}}">
-	    <td>{{mapping.path}}</td>
-	    <td>"{{mapping.innerText}}"</td>
-	    <td>{{mapping.start}}</td>
-	    <td>{{mapping.end}}</td>
-	    <td class="shown-{{!atomicOnly}}">{{mapping.atomic | booleanCheckmark}}</td>
-	  </tr>
-	</tbody>
-      </table>
     </div>
 
     <div id="search-input" class="shown-{{canSearch}}">
       <form name="SearchForm">
         DOM element to scan:
 	<select ng-model="selectedPath" ng-options="path for path in paths"></select>
+        <hr />
 	Search term:
 	<input type="text" ng-model="searchTerm" required="true">
 	Search position:
@@ -120,6 +84,10 @@
 	  </tbody>
 	</table>
       </div>
+    </div>
+    <div class="shown-{{renderSource != null}}">
+      <h2>DOM rendered as:</h2>
+      <div id="rendered-dom" ng-bind-html-unsafe="renderSource"></div>
     </div>
   </div>
 </body>

@@ -1,8 +1,8 @@
 #Controllers
 
 class SearchController
-  this.$inject = ['$scope', '$timeout', '$filter', 'domSearcher']
-  constructor: ($scope, $timeout, $filter, domSearcher) ->
+  this.$inject = ['$scope', '$timeout', '$http', 'domSearcher']
+  constructor: ($scope, $timeout, $http, domSearcher) ->
 
     $scope.cleanResults = ->
       @paths = []
@@ -17,20 +17,49 @@ class SearchController
       @sourceMode = "local"
       @localSource = "This is <br /> a <i>test</i> <b>text</b>. <div>Has <div>some</div><div>divs</div>, too.</div>"
       @atomicOnly = true
-      @searchTerm = "text text"
       @searchPos = 0
       @$watch 'sourceMode', (newValue, oldValue) =>
         @cleanResults()
+        @renderSource = null
         switch @sourceMode
           when "local"
             @domSearcher.setRootId @rootId
+            @sourceModeNeedsInput = true
+            @searchTerm = "text text"
+            @searchPos = 0
           when "page"
-            @renderSource = null
+            @sourceModeNeedsInput = true
             @domSearcher.setRealRoot()
             @checkPathsDelayed()
-        
+            @searchTerm = "very"
+            @searchPos = 0
+          when "sample1"
+            @sourceModeNeedsInput = false
+            rq =
+              method: 'GET'
+              url: 'sample1.html'
+            $http(rq).success (data, status, headers, config) =>
+              @renderSource = data
+              @searchTerm = "formal truth jiggles the brain"
+              @searchPos = 1000
+              @checkPathsDelayed()
+            .error (data, status, headers, config) ->
+              console.log "http.get failed"                
+            
+
+
+#            ($http.get 'samples/sample1.html')
+#              .success (data) ->
+
+
+#              .fail ->
+
+                
           when "url"
-            @renderSource = null        
+            @renderSource = null
+            @sourceModeNeedsInput = true
+            @searchTerm = "text text"
+            @searchPos = 0        
 
     $scope.init()
 

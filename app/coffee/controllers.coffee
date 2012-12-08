@@ -1,5 +1,12 @@
 #Controllers
 
+class BrowserController
+  this.$inject = ['$scope', '$rootScope']
+  constructor: ($scope, $rootScope) ->
+    $rootScope.hasInnerText = document.getElementsByTagName("body")[0].innerText?
+    if not $rootScope.hasInnerText
+      $scope.message = "Unfortunately, your browser does not support innerText. Try this with Chrome[ium]."
+
 class SearchController
   this.$inject = ['$scope', '$timeout', '$http', 'domSearcher']
   constructor: ($scope, $timeout, $http, domSearcher) ->
@@ -72,3 +79,4 @@ class SearchController
 
 angular.module('innerPeace.controllers', [])
   .controller('SearchController', SearchController)
+  .controller('BrowserController', BrowserController)

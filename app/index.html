@@ -25,8 +25,10 @@
   <script src="coffee/app.coffee" type="text/coffeescript"></script>
 
   <h1>The Search for Inner[Text] Peace</h1>
-  
-  <div ng-controller="SearchController">
+
+  <div ng-controller="BrowserController">{{message}}</div>
+
+  <div ng-controller="SearchController" class="shown-{{hasInnerText}}">
     HTML input source:
     <select ng-model="sourceMode">
       <option value="local">Input HTML source manually</option>

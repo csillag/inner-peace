@@ -72,21 +72,32 @@ class window.DomSearcher
         if match.full # easy to do, can highlight full element
           @hilite match.node      
         else
-          console.log "partial match"
-          console.log match        
+#          console.log "partial match"
+#          console.log match        
           window.wtfnode = match.node        
           offset = match.node.data.indexOf match.text
           if not match.end? # from the start, to a given position
+#            console.log "[-"
             secondPart = match.node.splitText(match.start + offset)
+            firstPart = secondPart.previousSibling
+#            console.log "1: '" + firstPart.data + "'"
+#            console.log "2: '" + secondPart.data + "'"
             @hilite secondPart
-          else if not match.start? # from a position till the end        
+          else if not match.start? # from a position till the end
+#            console.log "-]"
             secondPart = match.node.splitText(match.end + offset)
             firstPart = secondPart.previousSibling
+#            console.log "1: '" + firstPart.data + "'"
+#            console.log "2: '" + secondPart.data + "'"        
             @hilite firstPart
           else
+#            console.log "[-]"
             secondPart = match.node.splitText(match.start + offset)
             firstPart = secondPart.previousSibling
             thirdPart = secondPart.splitText(match.end - match.start)
+#            console.log "1: '" + firstPart.data + "'"
+#            console.log "2: '" + secondPart.data + "'"
+#            console.log "3: '" + thirdPart.data + "'"        
             @hilite secondPart
 
 

@@ -25,7 +25,7 @@ class SearchController
           when "local"
             @domSearcher.setRootId @rootId
             @sourceModeNeedsInput = true
-            @searchTerm = "text text"
+            @searchTerm = "sex text"
             @searchPos = 0
           when "page"
             @sourceModeNeedsInput = true

@@ -24,10 +24,16 @@ All the DOM analyzing logic is in one CoffeeScript file ( app/lib/domsearcher/do
 2. Go to http://localhost:8000/
 3. Click the buttons, and see what happens.
 
+Or see the [live demo](http://s3.amazonaws.com/inner-peace-demo/index.html)
 
 ## Unsolved problems:
 
--  Hidden nodes.
+- Currently, FF is not supported. (Chrome[ium] is.)
+   
+   That is because FF does not support innerText.
+   Will need to look into other possibilities.
+
+- Hidden nodes.
  
    When the "display" property of a node is set to "none", it's not displayd, so it's content
    does not get into it's parent's innerText.

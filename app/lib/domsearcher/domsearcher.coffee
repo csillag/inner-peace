@@ -62,7 +62,43 @@ class window.DomSearcher
       sr.nodes = matches
     sr
 
+  # Call this to highlight search results
+  highlight: (searchResult) ->
+    for match in searchResult.nodes
+      do (match) =>
+        match.node = @lookUpNode match.path
+    for match in searchResult.nodes
+      do (match) =>
+        if match.full # easy to do, can highlight full element
+          @hilite match.node      
+        else
+          console.log "partial match"
+          console.log match        
+          window.wtfnode = match.node        
+          offset = match.node.data.indexOf match.text
+          if not match.end? # from the start, to a given position
+            secondPart = match.node.splitText(match.start + offset)
+            @hilite secondPart
+          else if not match.start? # from a position till the end        
+            secondPart = match.node.splitText(match.end + offset)
+            firstPart = secondPart.previousSibling
+            @hilite firstPart
+          else
+            secondPart = match.node.splitText(match.start + offset)
+            firstPart = secondPart.previousSibling
+            thirdPart = secondPart.splitText(match.end - match.start)
+            @hilite secondPart
+
+
   # ===== Private methods (never call from outside the module) =======
+
+  hilite: (node) ->
+    hl = document.createElement "span"
+    hl.setAttribute "class", "hl"
+    hl.appendChild node.cloneNode()
+    node.parentNode.insertBefore hl, node
+    node.parentNode.removeChild node        
+        
 
   getProperNodeName: (node) ->
     nodeName = node.nodeName

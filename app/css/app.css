@@ -41,7 +41,10 @@
     margin: 1em;
 }
 
-
 .shown-false {
     display: none;
+}
+
+span.hl {
+  background-color: yellow;
 }

@@ -5,6 +5,7 @@
 2. Go to http://localhost:8000/
 3. Click the buttons, and see what happens.
 
+
 Unsolved problems:
 
 1. Hidden nodes.
@@ -24,7 +25,9 @@ Unsolved problems:
 
    This would not break the results, but would add false parts to the selection.
 
-2. Whitespaces
+Caveats:
+
+- Whitespaces
 
    When the browser created the "innerText" value of a sub-tree, various complicated things happen to whitespaces found in the child nodes.
 
@@ -33,7 +36,12 @@ Unsolved problems:
    I did not really look it this, so now I just strip all whitespaces, and look for matches to determine how the
    parts overlap. This might cause some inaccuracy with the white-spaces an the ends of the selection
 
-3. Length of match
+   Update:
+ 
+   Now I take care of this by re-checking the content of the element (comparing it to the stored value)
+   when doing the highlighting based on the search results. With this, the results are exact.
+
+- Length of match
 
    It's possible to specify a search term the is longer/shorter than the original text, and it will still match.
    (That's the results of the fancy matcher algorythm.)
@@ -42,3 +50,7 @@ Unsolved problems:
    This means that we are only guessing the length of the match is the same as the length of the search term.
 
    Again, this might cause some inaccuracy at the end of the selection.
+
+   Update:
+
+   now I do a two-phase search (look from the other end, too), so I have the proper end position.

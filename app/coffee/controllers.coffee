@@ -35,31 +35,11 @@ class SearchController
             @searchPos = 0
           when "sample1"
             @sourceModeNeedsInput = false
-            rq =
-              method: 'GET'
-              url: 'sample1.html'
-            $http(rq).success (data, status, headers, config) =>
+            $http.get("sample1.html").success (data) =>
               @renderSource = data
               @searchTerm = "formal truth jiggles the brain"
               @searchPos = 1000
               @checkPathsDelayed()
-            .error (data, status, headers, config) ->
-              console.log "http.get failed"                
-            
-
-
-#            ($http.get 'samples/sample1.html')
-#              .success (data) ->
-
-
-#              .fail ->
-
-                
-          when "url"
-            @renderSource = null
-            @sourceModeNeedsInput = true
-            @searchTerm = "text text"
-            @searchPos = 0        
 
     $scope.init()
 
@@ -73,15 +53,18 @@ class SearchController
       $timeout => @checkPaths()  
 
     $scope.render = ->
-      @renderSource = @localSource
-      @cleanResults()
-      @checkPathsDelayed()
+      @renderSource = ""
+      $timeout =>  
+        @renderSource = @localSource
+        @cleanResults()
+        @checkPathsDelayed()
 
     $scope.search = ->
      sr = @domSearcher.search @selectedPath, @searchTerm, @searchPos
      if sr?
        @searchResults = if sr.found is @searchTerm then " (Exact match.)" else " (Found this: '" + sr.found + "')"
        @detailedResults = sr.nodes
+       @domSearcher.highlight sr
      else
        @searchResults = "Pattern not found."
        @detailedResults = []

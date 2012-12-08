@@ -1,0 +1,5 @@
+ - Add license
+ - Expose search controls
+ - When selecting paths, show length of text
+ - Make highlighting reversible
+ - Mark selected path (even before searching)

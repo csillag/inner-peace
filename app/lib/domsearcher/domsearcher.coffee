@@ -20,6 +20,10 @@ class window.DomSearcher
   # After you have configured the root node to use, you can query the available paths
   getAllPaths: -> @collectPathsForNode @pathStartNode
 
+  # Use this to get the max allowed pattern length.
+  # Trying to use a longer pattern will give an error.
+  getMaxPatternLength: -> @fancyMatcher.getMaxPatternLength()
+        
   # Use this to search for text
   #
   # Parameters:
@@ -37,6 +41,13 @@ class window.DomSearcher
   # 
   # If no match is found, null is returned.  # 
   search: (searchPath, searchPattern, searchPos, matchDistance = 1000, matchThreshold = 0.5) ->
+
+    maxLength = @getMaxPatternLength()
+    wantedLength = searchPattern.length
+    if wantedLength > maxLength
+      alert "Pattern is longer than allowed by the search library. (Max is " + maxLength + "; requested is " + wantedLength + ".)"
+      return
+        
     @fancyMatcher.setMatchDistance matchDistance
     @fancyMatcher.setMatchThreshold matchThreshold
     @corpus = @getNodeInnerText @lookUpNode searchPath

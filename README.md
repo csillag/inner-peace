@@ -30,10 +30,21 @@ Or see the [live demo](http://s3.amazonaws.com/inner-peace-demo/index.html)
 
 - Currently, FF is not supported. (Chrome[ium] is.)
    
-   That is because FF does not support innerText.
-   Will need to look into other possibilities.
+  That is because FF does not support innerText.
+  Will need to look into other possibilities.
 
-- Hidden nodes.
+- Pattern length
+
+   Unfortunately, there is a limitation about the max length of pattern.
+   The exact value varies by browser and platform, but it's typically
+   32 or 64. Which means you can't search for patterns longer that that.
+   (The getMaxPatternLength method returns the current limit.)
+
+   This limitation comes from the implementation of the 
+   [Bitap matching algorithm](http://neil.fraser.name/software/diff_match_patch/bitap.ps);
+   will need to look into this later.
+
+- Hidden nodes
  
    When the "display" property of a node is set to "none", it's not displayd, so it's content
    does not get into it's parent's innerText.

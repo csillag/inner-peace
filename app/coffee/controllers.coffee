@@ -25,6 +25,9 @@ class SearchController
       @localSource = "This is <br /> a <i>test</i> <b>text</b>. <div>Has <div>some</div><div>divs</div>, too.</div>"
       @atomicOnly = true
       @searchPos = 0
+      @maxPatternLength = @domSearcher.getMaxPatternLength()
+      @matchDistance = 1000
+      @matchThreshold = 50
       @$watch 'sourceMode', (newValue, oldValue) =>
         @cleanResults()
         @renderSource = null
@@ -67,14 +70,14 @@ class SearchController
         @checkPathsDelayed()
 
     $scope.search = ->
-     sr = @domSearcher.search @selectedPath, @searchTerm, @searchPos
-     if sr?
-       @searchResults = if sr.found is @searchTerm then " (Exact match.)" else " (Found this: '" + sr.found + "')"
-       @detailedResults = sr.nodes
-       @domSearcher.highlight sr
-     else
-       @searchResults = "Pattern not found."
-       @detailedResults = []
+      sr = @domSearcher.search @selectedPath, @searchTerm, @searchPos, @matchDistance, @matchThreshold
+      if sr?
+        @searchResults = if sr.found is @searchTerm then " (Exact match.)" else " (Found this: '" + sr.found + "')"
+        @detailedResults = sr.nodes
+        @domSearcher.highlight sr
+      else
+        @searchResults = "Pattern not found."
+        @detailedResults = []
 
 
 angular.module('innerPeace.controllers', [])

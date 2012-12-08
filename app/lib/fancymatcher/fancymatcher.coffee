@@ -3,6 +3,10 @@ class window.FancyMatcher
 
   _reverse: (text) -> text.split("").reverse().join ""
 
+  # Use this to get the max allowed pattern length.
+  # Trying to use a longer pattern will give an error.
+  getMaxPatternLength: -> @dmp.Match_MaxBits
+
   # The following example is a classic dilemma.
   # There are two potential matches, one is close to the expected location
   # but contains a one character error, the other is far from the expected

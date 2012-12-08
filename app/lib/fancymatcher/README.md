@@ -28,3 +28,14 @@ And then you can use the usual DI to get the service.
 
 (Use getInstance on it to get an actual instance; it can not be a singletone,
 since it's stateful.)
+
+## Problems
+
+Unfortunately, there is a limitation about the max length of pattern.
+The exact value varies by browser and platform, but it's typically
+32 or 64. Which means you can't search for patterns longer that that.
+(The getMaxPatternLength method returns the current limit.)
+
+This limitation comes from the implementation of the 
+[Bitap matching algorithm](http://neil.fraser.name/software/diff_match_patch/bitap.ps);
+will need to look into this later.

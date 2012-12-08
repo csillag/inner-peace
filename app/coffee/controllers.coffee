@@ -1,68 +1,75 @@
 #Controllers
 
 class SearchController
-  this.$inject = ['$scope', '$timeout', '$filter', 'domSearcher', 'fancyMatcher']
-  constructor: ($scope, $timeout, $filter, domSearcher, fancyMatcher) ->
+  this.$inject = ['$scope', '$timeout', '$filter', 'domSearcher']
+  constructor: ($scope, $timeout, $filter, domSearcher) ->
 
-    $scope.rootId = "rendered-dom" #this is ID of the DOM element we use for rendering the demo HTML
-    $scope.sourceMode = "local"
-    $scope.localSource = "This is <br /> a <i>test</i> <b>text</b>. <div>Has <div>some</div><div>divs</div>, too.</div>"
-    $scope.atomicOnly = true
-    $scope.searchTerm = "text text"
-    $scope.searchPos = 0
+    $scope.init = ->
+      @domSearcher = domSearcher.getInstance()  
+      @rootId = "rendered-dom" #this is ID of the DOM element we use for rendering the demo HTML
+      @sourceMode = "local"
+      @localSource = "This is <br /> a <i>test</i> <b>text</b>. <div>Has <div>some</div><div>divs</div>, too.</div>"
+      @atomicOnly = true
+      @searchTerm = "text text"
+      @searchPos = 0
+      @$watch 'sourceMode', (newValue, oldValue) =>
+        @paths = []
+        @mappings = []
+        @searchResults = null
+        switch @sourceMode
+          when "local"
+            console.log "Source mode is now local."        
+          when "page"
+            @renderSource = null
+            $timeout -> @checkPage()
+          when "url"
+            @renderSource = null        
 
-    $scope.$watch 'sourceMode', (newValue, oldValue) ->
-      $scope.paths = []
-      $scope.mappings = []
-      $scope.searchResults = null
+    $scope.init()
 
-      if $scope.sourceMode == "local"
-      else
-        $scope.renderSource = null
-        if $scope.sourceMode == "page"
-          $timeout -> $scope.checkPage()
-        else
-        
     $scope.render = ->
-      $scope.renderSource = $scope.localSource
-      $scope.paths = []
-      $scope.mappings = []
-      $scope.searchResults = null
-
+      @renderSource = @localSource
+      @paths = []
+      @mappings = []
+      @searchResults = null
       # wait for the browser to render the DOM for the new HTML
-      $timeout ->
-        $scope.paths = domSearcher.collectSubPaths $scope.rootId, $scope.rootId
-        $scope.selectedPath = $scope.paths[0]
+      $timeout => @checkRendered()
+
+    $scope.checkRendered = ->
+      @paths = @domSearcher.collectSubPaths @rootId, @rootId
+      @selectedPath = @paths[0]
 
     $scope.checkPage = ->
-      $scope.paths = domSearcher.collectPaths()
-      $scope.selectedPath = $scope.paths[0]
+      @paths = @domSearcher.collectPaths()
+      @selectedPath = @paths[0]
 
     $scope.scan = ->
-      switch $scope.sourceMode
+      switch @sourceMode
         when "local"
-          $scope.corpus = domSearcher.getPathInnerText $scope.selectedPath, $scope.rootId
-          $scope.mappings = domSearcher.collectContents $scope.selectedPath, $scope.rootId
-          $scope.searchResults = null
+          @corpus = @domSearcher.getPathInnerText @selectedPath, @rootId
+          @mappings = @domSearcher.collectContents @selectedPath, @rootId
+          @searchResults = null
         when "page"
-          $scope.corpus = domSearcher.getBodyInnerText()
-          $scope.mappings = domSearcher.collectContents $scope.selectedPath
-          $scope.searchResults = null        
+          @corpus = @domSearcher.getBodyInnerText()
+          @mappings = @domSearcher.collectContents @selectedPath
+          @searchResults = null        
         else
           alert "Not supported"
 
     $scope.search = ->
-      startIndex = fancyMatcher.match_main $scope.corpus, $scope.searchTerm, $scope.searchPos
-      if startIndex > -1
-        matchLength = $scope.searchTerm.length
-        match = $scope.corpus.substr startIndex, matchLength
-        $scope.searchResults = "Match found at position #" + startIndex + "." + if match is $scope.searchTerm then " (Exact match.)" else " (Found this: '" + match + "')"
-        $scope.detailedResults = domSearcher.collectElements $scope.mappings, startIndex, startIndex + matchLength
+      searchResult = @domSearcher.search @corpus, @searchTerm, @searchPos
+      if searchResult?
+        startIndex = searchResult.start
+        endIndex = searchResult.end
+        matchLength = endIndex - startIndex
+        match = @corpus.substr startIndex, matchLength
+        @searchResults = "Match found at position [" + startIndex + ":" + endIndex + "]." + if match is @searchTerm then " (Exact match.)" else " (Found this: '" + match + "')"
+        @detailedResults = @domSearcher.collectElements @mappings, startIndex, endIndex
       else
-        $scope.searchResults = "No match."
-        $scope.detailedResults = []
+        @searchResults = "No match."
+        @detailedResults = []
         
-#      switch $scope.sourceMode
+#      switch @sourceMode
 #        when "local"
 #
 #        when "page"

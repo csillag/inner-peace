@@ -1,5 +1,5 @@
 class window.DomSearcher
-  constructor: ->
+  constructor: (fancyMatcher) -> @fancyMatcher = fancyMatcher
 
   getProperNodeName: (element) ->
     nodeName = element.nodeName
@@ -157,4 +157,5 @@ class window.DomSearcher
     @collectStrings node, path, null, 0, 0, results
     results
 
-
+  search: (corpus, searchTerm, searchPos) ->
+    @fancyMatcher.search corpus, searchTerm, searchPos

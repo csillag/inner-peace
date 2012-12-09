@@ -1,4 +1,4 @@
-class DMPMatcher
+class window.DMPMatcher
   constructor: -> @dmp = new diff_match_patch
 
   _reverse: (text) -> text.split("").reverse().join ""
@@ -68,6 +68,3 @@ class DMPMatcher
       start: startIndex
       end: endIndex
       found: text.substr startIndex, matchLength
-
-angular.module 'dmp', [], ($provide) ->
-  $provide.factory "dmpMatcher", -> getInstance: -> new DMPMatcher

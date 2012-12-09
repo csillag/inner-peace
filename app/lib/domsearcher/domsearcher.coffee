@@ -1,5 +1,5 @@
 class window.DomSearcher
-  constructor: (fancyMatcher) -> @fancyMatcher = fancyMatcher
+  constructor: (dmpMatcher) -> @dmp = dmpMatcher
 
   # ===== Public methods =======
 
@@ -26,7 +26,7 @@ class window.DomSearcher
 
   # Use this to get the max allowed pattern length.
   # Trying to use a longer pattern will give an error.
-  getMaxPatternLength: -> @fancyMatcher.getMaxPatternLength()
+  getMaxPatternLength: -> @dmp.getMaxPatternLength()
         
   # Use this to search for text
   #
@@ -52,10 +52,10 @@ class window.DomSearcher
       alert "Pattern is longer than allowed by the search library. (Max is " + maxLength + "; requested is " + wantedLength + ".)"
       return
         
-    @fancyMatcher.setMatchDistance matchDistance
-    @fancyMatcher.setMatchThreshold matchThreshold
+    @dmp.setMatchDistance matchDistance
+    @dmp.setMatchThreshold matchThreshold
     @corpus = @getNodeInnerText @lookUpNode searchPath
-    sr = @fancyMatcher.search @corpus, searchPattern, searchPos
+    sr = @dmp.search @corpus, searchPattern, searchPos
     if sr?
       mappings = @collectMappings searchPath                
       matches = []
@@ -94,7 +94,6 @@ class window.DomSearcher
             before: hl
           toRemove.push hl
         else
-          window.wtfnode = match.node        
           offset = match.node.data.indexOf match.text
           if not match.end? # from the start, to a given position
             secondPart = match.node.splitText(match.start + offset)
@@ -265,7 +264,3 @@ class window.DomSearcher
 
   collectMatchingNodes: (sr) ->
 
-angular.module 'domsearcher', ['dmp'], ($provide) ->
-  $provide.factory "domSearcher", ["dmpMatcher", (dmpMatcher) ->
-    getInstance: -> new DomSearcher dmpMatcher.getInstance()
-  ]

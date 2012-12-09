@@ -79,43 +79,67 @@ class window.DomSearcher
 
   # Call this to highlight search results
   highlight: (searchResult) ->
+    match.node = @lookUpNode match.path for match in searchResult.nodes
+
+    toInsert = []
+    toRemove = []
+    
     for match in searchResult.nodes
       do (match) =>
-        match.node = @lookUpNode match.path
-    for match in searchResult.nodes
-      do (match) =>
+        clone = match.node.cloneNode()
         if match.full # easy to do, can highlight full element
-          @hilite match.node      
+          hl = @hilite match.node
+          toInsert.push
+            node: clone
+            before: hl
+          toRemove.push hl
         else
-#          console.log "partial match"
-#          console.log match        
           window.wtfnode = match.node        
           offset = match.node.data.indexOf match.text
           if not match.end? # from the start, to a given position
-#            console.log "[-"
             secondPart = match.node.splitText(match.start + offset)
             firstPart = secondPart.previousSibling
-#            console.log "1: '" + firstPart.data + "'"
-#            console.log "2: '" + secondPart.data + "'"
-            @hilite secondPart
+            hl = @hilite secondPart
+            toInsert.push
+              node: clone
+              before: firstPart
+            toRemove.push firstPart
+            toRemove.push hl
           else if not match.start? # from a position till the end
-#            console.log "-]"
             secondPart = match.node.splitText(match.end + offset)
             firstPart = secondPart.previousSibling
-#            console.log "1: '" + firstPart.data + "'"
-#            console.log "2: '" + secondPart.data + "'"        
-            @hilite firstPart
+            hl = @hilite firstPart
+            toInsert.push
+              node: clone
+              before: hl
+            toRemove.push hl
+            toRemove.push secondPart        
           else
-#            console.log "[-]"
             secondPart = match.node.splitText(match.start + offset)
             firstPart = secondPart.previousSibling
             thirdPart = secondPart.splitText(match.end - match.start)
-#            console.log "1: '" + firstPart.data + "'"
-#            console.log "2: '" + secondPart.data + "'"
-#            console.log "3: '" + thirdPart.data + "'"        
-            @hilite secondPart
+            hl = @hilite secondPart
+            toInsert.push
+              node: clone
+              before: firstPart
+            toRemove.push firstPart
+            toRemove.push hl
+            toRemove.push thirdPart
 
+    searchResult.undoHilite =
+      insert: toInsert
+      remove: toRemove
 
+  # Call this to undo highlighting search results
+  #
+  # It's your responsibility to only call this if a highlight is at place.
+  # Pass in the searchResult that was used with the highlighting.
+  undoHighlight: (searchResult) ->
+    insert.before.parentNode.insertBefore insert.node, insert.before for insert in searchResult.undoHilite.insert
+    remove.parentNode.removeChild remove for remove in searchResult.undoHilite.remove
+    searchResult.undoHilite = null
+  
+        
   # ===== Private methods (never call from outside the module) =======
 
   hilite: (node) ->
@@ -124,7 +148,7 @@ class window.DomSearcher
     hl.appendChild node.cloneNode()
     node.parentNode.insertBefore hl, node
     node.parentNode.removeChild node        
-        
+    hl    
 
   getProperNodeName: (node) ->
     nodeName = node.nodeName
@@ -163,10 +187,9 @@ class window.DomSearcher
 
   collectPathsForNode: (node, results = []) ->
     if node.nodeType in @ignoredNodeTypes and results.length > 0 then return
-    p =
+    results.push
       path: @getPathTo node
       length: (@getNodeInnerText node).length
-    results.push p
     
     if node.hasChildNodes
       children = node.childNodes
@@ -184,7 +207,6 @@ class window.DomSearcher
     doc = @rootNode.ownerDocument ? @rootNode
     results = doc.evaluate path, @rootNode, null, 0, null
     node = results.iterateNext()
-    node
 
   getNodeInnerText: (node) ->
     switch node.nodeType
@@ -199,7 +221,6 @@ class window.DomSearcher
         return ""
 
   collectStrings: (node, parentPath, parentText = null, parentIndex = 0, index = 0, results = []) ->
-#    console.log "Doing " + parentPath     
     innerText = @getNodeInnerText node
 
     if not innerText? or innerText is "" then return index
@@ -212,13 +233,12 @@ class window.DomSearcher
     if startIndex is -1 then return index
     endIndex = startIndex + innerText.length
     atomic = not node.hasChildNodes()
-    mapping =
+    results.push
       "path": parentPath
       "innerText": innerText
       "start": parentIndex + startIndex
       "end": parentIndex + endIndex
       "atomic" : atomic
-    results.push mapping
 
     if not atomic
       children = node.childNodes

@@ -70,11 +70,12 @@ class SearchController
         @checkPathsDelayed()
 
     $scope.search = ->
-      sr = @domSearcher.search @selectedPath, @searchTerm, @searchPos, @matchDistance, @matchThreshold
+      sr = @domSearcher.search @selectedPath, @searchTerm, @searchPos, @matchDistance, @matchThreshold / 100
       if sr?
         @searchResults = if sr.found is @searchTerm then " (Exact match.)" else " (Found this: '" + sr.found + "')"
         @detailedResults = sr.nodes
         @domSearcher.highlight sr
+#        console.log sr.undoHilite
       else
         @searchResults = "Pattern not found."
         @detailedResults = []

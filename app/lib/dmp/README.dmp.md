@@ -1,9 +1,9 @@
-# fancy-matcher
-## Sophisticated plain text searching
+# dmp
+## diff-match-patch wrapper module for Angular.js
 
 ## What is it
 
-This module is a simple wrapper for [google-diff-match-patch](http://code.google.com/p/google-diff-match-patch/)
+This Angular.js module is a simple wrapper for [google-diff-match-patch](http://code.google.com/p/google-diff-match-patch/). written in CoffeeScript.
 
 It only exposes the text search functions of the JS library; the diff and patch functions are only available on the original library.
 
@@ -19,12 +19,7 @@ This is required for determining the length of selection in cases then the match
 To use it, you must include the original JS library, too.
 Then include the module, and you are set.
 
-If you want to use it with Angular, you can register it as an angular service, like this:
-
-    angular.module 'whatever', [], ($provide) ->
-      $provide.factory "fancyMatcher", -> getInstance: -> new FancyMatcher
-
-And then you can use the usual DI to get the service.
+The name of the angular moduel is 'dmp', and the provided service is $dmpMatcher.
 
 (Use getInstance on it to get an actual instance; it can not be a singletone,
 since it's stateful.)

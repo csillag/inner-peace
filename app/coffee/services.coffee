@@ -1,8 +1,6 @@
 # Services
 
-angular.module 'innerPeace.services', [], ($provide) ->
-  $provide.factory "fancyMatcher", ->
-    getInstance: -> new FancyMatcher
-  $provide.factory "domSearcher", ["fancyMatcher", (fancyMatcher) ->
-    getInstance: -> new DomSearcher fancyMatcher.getInstance()
+angular.module 'innerPeace.services', ["dmp"], ($provide) ->
+  $provide.factory "domSearcher", ["dmpMatcher", (dmpMatcher) ->
+    getInstance: -> new DomSearcher dmpMatcher.getInstance()
   ]

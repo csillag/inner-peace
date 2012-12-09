@@ -1,5 +1,4 @@
  - Solve FF compatibility issue
  - Solve pattern length limit issue
- - When selecting paths, show length of text
  - Make highlighting reversible
  - Mark selected path (even before searching)

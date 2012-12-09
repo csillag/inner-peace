@@ -18,6 +18,10 @@ class window.DomSearcher
   setRootId: (rootId) -> @setRootNode document.getElementById rootId
 
   # After you have configured the root node to use, you can query the available paths
+  # 
+  # An array is returned, with each entry containing a "path" and a "length" field.
+  # The value of the "path" field is the valid path value, "length" contains information
+  # about the length of innerText belonging to the given path.
   getAllPaths: -> @collectPathsForNode @pathStartNode
 
   # Use this to get the max allowed pattern length.
@@ -159,7 +163,11 @@ class window.DomSearcher
 
   collectPathsForNode: (node, results = []) ->
     if node.nodeType in @ignoredNodeTypes and results.length > 0 then return
-    results.push @getPathTo node
+    p =
+      path: @getPathTo node
+      length: (@getNodeInnerText node).length
+    results.push p
+    
     if node.hasChildNodes
       children = node.childNodes
       i = 0

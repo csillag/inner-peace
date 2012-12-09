@@ -51,7 +51,7 @@
     <div id="search-input" ng-show="canSearch">
       <form name="searchForm">
         DOM element to scan:
-	<select ng-model="selectedPath" ng-options="path for path in paths"></select>
+	<select ng-model="selectedPath" ng-options="path.path as path.path + ' (' + path.length +' chars)' for path in paths"></select>
         <hr />
 	Search term:
 <!--

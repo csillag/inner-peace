@@ -24,7 +24,7 @@ All the DOM analyzing logic is in one CoffeeScript file ( app/lib/domsearcher/do
 2. Go to http://localhost:8000/
 3. Click the buttons, and see what happens.
 
-Or see the [live demo](http://s3.amazonaws.com/inner-peace-demo/index.html)
+Or see the [live demo](http://s3.amazonaws.com/inner-peace-demo/index.html).
 
 ## Unsolved problems:
 
@@ -43,6 +43,7 @@ Or see the [live demo](http://s3.amazonaws.com/inner-peace-demo/index.html)
    This limitation comes from the implementation of the 
    [Bitap matching algorithm](http://neil.fraser.name/software/diff_match_patch/bitap.ps);
    will need to look into this later.
+   See thread [here](https://groups.google.com/forum/?fromgroups=#!topic/diff-match-patch/VgAdlYBCHzU).
 
 - Hidden nodes
  

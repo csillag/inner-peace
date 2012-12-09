@@ -55,7 +55,7 @@ class SearchController
 
     $scope.checkPaths = ->
       @paths = @domSearcher.getAllPaths()
-      @selectedPath = @paths[0]
+      @selectedPath = @paths[0].path
       @canSearch = true
 
     $scope.checkPathsDelayed = ->

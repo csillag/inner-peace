@@ -77,6 +77,13 @@ class SearchController
         @searchResults = if @sr.found is @searchTerm then " (Exact match.)" else " (Found this: '" + @sr.found + "')"
         @detailedResults = @sr.nodes
         @domSearcher.highlight @sr
+
+        window.wtf1 = node = @sr.undoHilite.remove[0]
+        window.wtf2 = jqNode = angular.element node
+        pos = jqNode.offset()
+        console.log pos
+
+        
 #        console.log @sr.undoHilite
       else
         @searchResults = "Pattern not found."

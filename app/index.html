@@ -82,27 +82,40 @@ Sadly, ng-maxlength does not yet support expressions. Pull request is pending:
       
       <div id="search-results" ng-show="searchResults.length>0 || detailedResults.length>0">
 	{{searchResults}}
-	<div id="search-matching-elements" ng-show="detailedResults.length>0">
+	<input type="checkbox" ng-model="showDetailedResults">Show detailed results</input>
+	<div id="search-matching-elements" ng-show="showDetailedResults && detailedResults.length>0">
 	  <p>Involved elements:</p>
 	  <table border="1">
 	    <thead>
 	      <tr>
-		<th>Path</th>
+		<th rowspan="2">Path</th>
+		<th rowSpan="2">Full</th>
+		<th colSpan="4">Displayed text</th>
+		<th colSpan="4">Actual HTML source text</th>
+	      </tr>
+	      <tr>
 		<th>Text</th>
 		<th>Wanted</th>
-		<th>Full</th>
 		<th>From</th>
 		<th>Till</th>
+		<th>Text</th>
+		<th>From</th>
+		<th>Till</th>
+		<th>Yields</th>
 	      </tr>
 	    </thead>
 	    <tbody>
 	      <tr ng-repeat="match in detailedResults">
 		<td>{{match.element.path}}</td>
+		<td>{{match.full | booleanCheckmark}}</td>
 		<td>'{{match.element.content}}'</td>
 		<td>'{{match.wanted}}'</td>
-		<td>{{match.full | booleanCheckmark}}</td>
 		<td>{{match.start}}</td>
 		<td>{{match.end}}</td>
+		<td ng-bind-html-unsafe="match.element.node.data | quoteHTML"></td>
+		<td>{{match.startCorrected}}</td>
+		<td>{{match.endCorrected}}</td>
+		<td ng-bind-html-unsafe="match.yields | quoteHTML"></td>
 	      </tr>
 	    </tbody>
 	  </table>

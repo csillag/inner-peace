@@ -73,19 +73,38 @@ class window.DomSearcher
         do (mapping) ->
           match =
             element: mapping
-          if sr.start <= mapping.start and mapping.end <= sr.end
+          # take care of useless whitespaces at the start of the node
+          offset = mapping.node.data.indexOf mapping.content
+          # TODO: what about compacted whitespace mid-element?         
+          full_match = sr.start <= mapping.start and mapping.end <= sr.end
+          if full_match 
             match.full = true
             match.wanted = mapping.content
-          else if sr.start <= mapping.start
-            match.end = sr.end - mapping.start
-            match.wanted = mapping.content.substr 0, match.end
-          else if mapping.end <= sr.end
-            match.start = sr.start - mapping.start
-            match.wanted = mapping.content.substr match.start
+            match.yields = mapping.node.data
+          else if offset is -1
+            console.log "Problem identifying proper offset from inside this text block."
+            # this is _not a full match, but we can't reliably find the position,
+            # so wi will treat it as such.
+            match.full = true
+            match.yields = mapping.node.data            
           else
-            match.start = sr.start - mapping.start
-            match.end = sr.end - mapping.start
-            match.wanted = mapping.content.substr match.start, match.end - match.start
+           if sr.start <= mapping.start
+              match.end = sr.end - mapping.start
+              match.wanted = mapping.content.substr 0, match.end                
+              match.endCorrected = match.end + offset
+              match.yields = mapping.node.data.substr 0, match.endCorrected
+            else if mapping.end <= sr.end
+              match.start = sr.start - mapping.start
+              match.wanted = mapping.content.substr match.start        
+              match.startCorrected = match.start + offset
+              match.yields = mapping.node.data.substr match.startCorrected
+            else
+              match.start = sr.start - mapping.start
+              match.end = sr.end - mapping.start
+              match.wanted = mapping.content.substr match.start, match.end - match.start
+              match.startCorrected = match.start + offset
+              match.endCorrected = match.end + offset
+              match.yields = mapping.node.data.substr match.startCorrected, match.end - match.start
           matches.push match
       sr.nodes = matches
     sr
@@ -98,19 +117,18 @@ class window.DomSearcher
     
     for match in searchResult.nodes
       do (match) =>
-        clone = match.element.node.cloneNode()
+        node = match.element.node
+        clone = node.cloneNode()
+        match.element.node = clone
         if match.full # easy to do, can highlight full element
-          hl = @hilite match.element.node
+          hl = @hilite node
           toInsert.push
             node: clone
             before: hl
           toRemove.push hl
         else
-          #take care of useless whitespaces at the start of the node
-          offset = match.element.node.data.indexOf match.element.content
-        
           if not match.end? # from the start, to a given position
-            secondPart = match.element.node.splitText(match.start + offset)
+            secondPart = node.splitText(match.startCorrected)
             firstPart = secondPart.previousSibling
             hl = @hilite secondPart
             toInsert.push
@@ -119,7 +137,7 @@ class window.DomSearcher
             toRemove.push firstPart
             toRemove.push hl
           else if not match.start? # from a position till the end
-            secondPart = match.element.node.splitText(match.end + offset)
+            secondPart = node.splitText(match.endCorrected)
             firstPart = secondPart.previousSibling
             hl = @hilite firstPart
             toInsert.push
@@ -128,7 +146,7 @@ class window.DomSearcher
             toRemove.push hl
             toRemove.push secondPart        
           else
-            secondPart = match.element.node.splitText(match.start + offset)
+            secondPart = node.splitText(match.startCorrected)
             firstPart = secondPart.previousSibling
             thirdPart = secondPart.splitText(match.end - match.start)
             hl = @hilite secondPart

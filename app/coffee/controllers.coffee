@@ -17,11 +17,10 @@ class SearchController
       @compatibility = @domSearcher.testBrowserCompatibility()
       @rootId = "rendered-dom" #this is ID of the DOM element we use for rendering the demo HTML
       @sourceMode = "local"
-      @localSource = "This is <br /> a <i>test</i> <b>text</b>. <div>Has <div>some</div><div>divs</div>, too.</div>"
+      @localSource = "This is <br /> a <i>   test    </i> <b>    te   xt   </b>. <div>Has <div>some</div><div>divs</div>, too.</div>"
       @atomicOnly = true
       @searchPos = 0
       @maxPatternLength = @domSearcher.getMaxPatternLength()
-      @matchDistance = 1000
       @matchThreshold = 50
       @$watch 'sourceMode', (newValue, oldValue) =>
         @cleanResults()
@@ -32,18 +31,21 @@ class SearchController
             @sourceModeNeedsInput = true
             @searchTerm = "sex text"
             @searchPos = 0
+            @matchDistance = 1000
           when "page"
             @sourceModeNeedsInput = true
             @domSearcher.setRealRoot()
             @checkPaths()
             @searchTerm = "very"
             @searchPos = 0
+            @matchDistance = 1000
           when "sample1"
             @sourceModeNeedsInput = false
             $http.get("sample1.html").success (data) =>
               @renderSource = data
               @searchTerm = "formal truth jiggles the brain"
               @searchPos = 1000
+              @matchDistance = 10000
               @checkPaths()
 
     $scope.init()

@@ -3,6 +3,15 @@ class window.DomSearcher
 
   # ===== Public methods =======
 
+  # Call this to test browser compatibility.
+  # Returned structure has an "ok" field, which is boolean.
+  # If true, we are good to go. If false, the "message" field describes the problem.
+  testBrowserCompatibility: ->
+    hasInnerText = @getBody().innerText?
+    result = 
+      ok: hasInnerText
+      message: if hasInnerText then "We are OK" else "Unfortunately, your browser does not support innerText. Try this with Chrome[ium]."
+
   # To use the module, first you need to configure the root node to use for all operations.
   # This can be either the full document, or a specific sub-set of it.
 

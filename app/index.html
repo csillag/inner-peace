@@ -28,34 +28,35 @@
 
   <h1>The Search for Inner[Text] Peace</h1>
 
-  <div ng-controller="BrowserController">{{message}}</div>
+  <div ng-controller="SearchController">
+    <div ng-show="!compatibility.ok">{{compatibility.message}}</div>
+    <div ng-show="compatibility.ok">
+      HTML input source:
+      <select ng-model="sourceMode">
+	<option value="local">Input HTML source manually</option>
+	<option value="page">Use this page</option>
+	<option value="sample1">Use sample article 1</option>
+      </select>
+      
+      <div id="source-spec" ng-show="sourceModeNeedsInput">
+	<div ng-show="sourceMode=='local'">
+	  <p>Test html source:</p>
+	  <textarea ng-model="localSource" id="source-editor"></textArea>
+	  <button ng-click="render()">Render it!</button>
+	</div>
 
-  <div ng-controller="SearchController" ng-show="hasInnerText">
-    HTML input source:
-    <select ng-model="sourceMode">
-      <option value="local">Input HTML source manually</option>
-      <option value="page">Use this page</option>
-      <option value="sample1">Use sample article 1</option>
-    </select>
-
-    <div id="source-spec" ng-show="sourceModeNeedsInput">
-      <div ng-show="sourceMode=='local'">
-	<p>Test html source:</p>
-	<textarea ng-model="localSource" id="source-editor"></textArea>
-	<button ng-click="render()">Render it!</button>
+	<div ng-show="sourceMode=='page'">
+	  <p>OK, so you want to test out the stuff on this very page.</p>
+	</div>
       </div>
 
-      <div ng-show="sourceMode=='page'">
-	<p>OK, so you want to test out the stuff on this very page.</p>
-      </div>
-    </div>
-
-    <div id="search-input" ng-show="canSearch">
-      <form name="searchForm">
-        DOM element to scan:
-	<select ng-model="selectedPath" ng-options="path.path as path.path + ' (' + path.length +' chars)' for path in paths"></select>
-        <hr />
-	Search term:
+      <div id="search-input" ng-show="canSearch">
+	<form name="searchForm">
+          DOM element to scan:
+	  <select ng-model="selectedPath" ng-options="path.path as path.path + ' (' + path.length +' chars)' for path in paths"></select>
+          <hr />
+	  Search term:
+	  <input type="text" name="searchTerm" ng-model="searchTerm" ng-maxlength="32" required="true" />
 <!--
 	<input type="text" name="searchTerm" ng-model="searchTerm" ng-maxlength="{{maxPatternLength}}" required="true" /> 
  
@@ -63,51 +64,52 @@ Sadly, ng-maxlength does not yet support expressions. Pull request is pending:
   https://github.com/angular/angular.js/issues/1405
 -->
 
-	<input type="text" name="searchTerm" ng-model="searchTerm" ng-maxlength="32" required="true" />
-        <span class="error" ng-show="searchForm.searchTerm.$error.maxlength">
-	  Too long! Text matching library is limited to {{maxPatternLength}} characters.
-	</span>
-        <br />
-	Search position:
-	<input type="number" ng-model="searchPos" min="0" />
-        Match distance:
-        <input type="number" ng-model="matchDistance" min="0" />
-	Match threshold:
-        <input type="number" ng-model="matchThreshold" min="0" max="100" />
-	<button ng-disabled="!searchForm.$valid" ng-click="search()">Search!</button>
-<!-- 	<button ng-disabled="!sr" ng-click="undoHilite()">Remove highlighting</button> -->
-      </form>
-    </div>
 
-    <div id="search-results" ng-show="searchResults.length>0 || detailedResults.length>0">
-      {{searchResults}}
-      <div id="search-matching-elements" ng-show="detailedResults.length>0">
-	<p>Involved elements:</p>
-	<table border="1">
-	  <thead>
-	    <tr>
-	      <th>Path</th>
-	      <th>Text</th>
-	      <th>Full</th>
-	      <th>From</th>
-	      <th>Till</th>
-	    </tr>
-	  </thead>
-	  <tbody>
-	    <tr ng-repeat="match in detailedResults">
-	      <td>{{match.path}}</td>
-	      <td>{{match.text}}</td>
-	      <td>{{match.full | booleanCheckmark}}</td>
-	      <td>{{match.start}}</td>
-	      <td>{{match.end}}</td>
-	    </tr>
-	  </tbody>
-	</table>
+	  <span class="error" ng-show="searchForm.searchTerm.$error.maxlength">
+	    Too long! Text matching library is limited to {{maxPatternLength}} characters.
+	  </span>
+          <br />
+	  Search position:
+	  <input type="number" ng-model="searchPos" min="0" />
+          Match distance:
+          <input type="number" ng-model="matchDistance" min="0" />
+	  Match threshold:
+          <input type="number" ng-model="matchThreshold" min="0" max="100" />
+	  <button ng-disabled="!searchForm.$valid" ng-click="search()">Search!</button>
+	  <!-- 	<button ng-disabled="!sr" ng-click="undoHilite()">Remove highlighting</button> -->
+	</form>
       </div>
-    </div>
-    <div ng-show="renderSource">
-      <h2>DOM rendered as:</h2>
-      <div id="rendered-dom" ng-bind-html-unsafe="renderSource"></div>
+      
+      <div id="search-results" ng-show="searchResults.length>0 || detailedResults.length>0">
+	{{searchResults}}
+	<div id="search-matching-elements" ng-show="detailedResults.length>0">
+	  <p>Involved elements:</p>
+	  <table border="1">
+	    <thead>
+	      <tr>
+		<th>Path</th>
+		<th>Text</th>
+		<th>Full</th>
+		<th>From</th>
+		<th>Till</th>
+	      </tr>
+	    </thead>
+	    <tbody>
+	      <tr ng-repeat="match in detailedResults">
+		<td>{{match.path}}</td>
+		<td>{{match.text}}</td>
+		<td>{{match.full | booleanCheckmark}}</td>
+		<td>{{match.start}}</td>
+		<td>{{match.end}}</td>
+	      </tr>
+	    </tbody>
+	  </table>
+	</div>
+      </div>
+      <div ng-show="renderSource">
+	<h2>DOM rendered as:</h2>
+	<div id="rendered-dom" ng-bind-html-unsafe="renderSource"></div>
+      </div>
     </div>
   </div>
 <hr />

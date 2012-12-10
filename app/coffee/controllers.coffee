@@ -71,7 +71,8 @@ class SearchController
       if @sr?
         @searchResults = if @sr.exact then " (Exact match.)" else " (Found this: '" + @sr.found + "')"
         @detailedResults = @sr.nodes
-        @domSearcher.highlight @sr
+#        @domSearcher.highlight @sr
+        @domSearcher.select @sr
       else
         @searchResults = "Pattern not found."
         @detailedResults = []

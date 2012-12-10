@@ -107,7 +107,33 @@ class window.DomSearcher
               match.yields = mapping.node.data.substr match.startCorrected, match.end - match.start
           matches.push match
       sr.nodes = matches
+
+      r = document.createRange()
+
+      startMatch = sr.nodes[0]
+      startNode = startMatch.element.node
+      if startMatch.full
+        r.setStartBefore startNode
+      else
+        r.setStart startNode, startMatch.startCorrected
+
+      endMatch = sr.nodes[sr.nodes.length - 1]
+      endNode = endMatch.element.node
+      if endMatch.full
+        r.setEndAfter endNode
+      else
+        r.setEnd endNode, endMatch.endCorrected
+
+      sr.range = r
+
     sr
+
+  # Call this to select the search results
+  select: (searchResult) ->
+     unless searchResult? then return
+     sel = window.getSelection()
+     sel.removeAllRanges()
+     sel.addRange searchResult.range
 
   # Call this to highlight search results
   highlight: (searchResult) ->

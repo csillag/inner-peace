@@ -1,4 +1,5 @@
  - Scroll to selection
- - Solve FF compatibility issue
- - Solve pattern length limit issue
+ - Solve whitespace issues
+ - Solve FF compatibility issue - do InnerText manually?
+ - Solve pattern length limit issue - search for start & end, select everything in-between?
  - Mark selected path (even before searching)

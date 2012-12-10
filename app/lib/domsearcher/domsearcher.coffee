@@ -8,9 +8,10 @@ class window.DomSearcher
   # If true, we are good to go. If false, the "message" field describes the problem.
   testBrowserCompatibility: ->
     hasInnerText = @getBody().innerText?
+    ok = @contentMode isnt "innerText" or hasInnerText
     result = 
-      ok: hasInnerText
-      message: if hasInnerText then "We are OK" else "Unfortunately, your browser does not support innerText. Try this with Chrome[ium]."
+      ok: ok
+      message: if ok then "We are OK" else "Unfortunately, your browser does not support innerText. Try this with Chrome[ium]."
 
   # To use the module, first you need to configure the root node to use for all operations.
   # This can be either the full document, or a specific sub-set of it.
@@ -30,7 +31,7 @@ class window.DomSearcher
   # 
   # An array is returned, with each entry containing a "path" and a "length" field.
   # The value of the "path" field is the valid path value, "length" contains information
-  # about the length of innerText belonging to the given path.
+  # about the length of content belonging to the given path.
   getAllPaths: -> @collectPathsForNode @pathStartNode
 
   # Use this to get the max allowed pattern length.
@@ -63,7 +64,7 @@ class window.DomSearcher
         
     @dmp.setMatchDistance matchDistance
     @dmp.setMatchThreshold matchThreshold
-    @corpus = @getNodeInnerText @lookUpNode searchPath
+    @corpus = @getNodeContent @lookUpNode searchPath
     sr = @dmp.search @corpus, searchPattern, searchPos
     if sr?
       mappings = @collectMappings searchPath                
@@ -71,41 +72,45 @@ class window.DomSearcher
       for mapping in mappings when mapping.atomic and @regions_overlap mapping.start, mapping.end, sr.start, sr.end
         do (mapping) ->
           match =
-            path: mapping.path
-            text: mapping.innerText
+            element: mapping
           if sr.start <= mapping.start and mapping.end <= sr.end
-            match["full"] = true
+            match.full = true
+            match.wanted = mapping.content
           else if sr.start <= mapping.start
-            match["end"] = sr.end - mapping.start
+            match.end = sr.end - mapping.start
+            match.wanted = mapping.content.substr 0, match.end
           else if mapping.end <= sr.end
-            match["start"] = sr.start - mapping.start
+            match.start = sr.start - mapping.start
+            match.wanted = mapping.content.substr match.start
           else
-            match["start"] = sr.start - mapping.start
-            match["end"] = sr.end - mapping.start
+            match.start = sr.start - mapping.start
+            match.end = sr.end - mapping.start
+            match.wanted = mapping.content.substr match.start, match.end - match.start
           matches.push match
       sr.nodes = matches
     sr
 
   # Call this to highlight search results
   highlight: (searchResult) ->
-    match.node = @lookUpNode match.path for match in searchResult.nodes
 
     toInsert = []
     toRemove = []
     
     for match in searchResult.nodes
       do (match) =>
-        clone = match.node.cloneNode()
+        clone = match.element.node.cloneNode()
         if match.full # easy to do, can highlight full element
-          hl = @hilite match.node
+          hl = @hilite match.element.node
           toInsert.push
             node: clone
             before: hl
           toRemove.push hl
         else
-          offset = match.node.data.indexOf match.text
+          #take care of useless whitespaces at the start of the node
+          offset = match.element.node.data.indexOf match.element.content
+        
           if not match.end? # from the start, to a given position
-            secondPart = match.node.splitText(match.start + offset)
+            secondPart = match.element.node.splitText(match.start + offset)
             firstPart = secondPart.previousSibling
             hl = @hilite secondPart
             toInsert.push
@@ -114,7 +119,7 @@ class window.DomSearcher
             toRemove.push firstPart
             toRemove.push hl
           else if not match.start? # from a position till the end
-            secondPart = match.node.splitText(match.end + offset)
+            secondPart = match.element.node.splitText(match.end + offset)
             firstPart = secondPart.previousSibling
             hl = @hilite firstPart
             toInsert.push
@@ -123,7 +128,7 @@ class window.DomSearcher
             toRemove.push hl
             toRemove.push secondPart        
           else
-            secondPart = match.node.splitText(match.start + offset)
+            secondPart = match.element.node.splitText(match.start + offset)
             firstPart = secondPart.previousSibling
             thirdPart = secondPart.splitText(match.end - match.start)
             hl = @hilite secondPart
@@ -143,12 +148,18 @@ class window.DomSearcher
   # It's your responsibility to only call this if a highlight is at place.
   # Pass in the searchResult that was used with the highlighting.
   undoHighlight: (searchResult) ->
+    unless searchResult.undoHilite? then return
     insert.before.parentNode.insertBefore insert.node, insert.before for insert in searchResult.undoHilite.insert
     remove.parentNode.removeChild remove for remove in searchResult.undoHilite.remove
     searchResult.undoHilite = null
   
         
   # ===== Private methods (never call from outside the module) =======
+
+  contentMode:
+    "selection"
+#    "innerText"
+  careAboutNodeType: @contentMode is "innerText"
 
   hilite: (node) ->
     hl = document.createElement "span"
@@ -194,10 +205,10 @@ class window.DomSearcher
 #        return null
 
   collectPathsForNode: (node, results = []) ->
-    if node.nodeType in @ignoredNodeTypes and results.length > 0 then return
+    if @careAboutNodeType and node.nodeType in @ignoredNodeTypes and results.length > 0 then return
     results.push
       path: @getPathTo node
-      length: (@getNodeInnerText node).length
+      length: (@getNodeContent node).length
     
     if node.hasChildNodes
       children = node.childNodes
@@ -228,22 +239,44 @@ class window.DomSearcher
         console.log "Encountered node type " + node.nodeType + ". Not sure how to handle this."
         return ""
 
-  collectStrings: (node, parentPath, parentText = null, parentIndex = 0, index = 0, results = []) ->
-    innerText = @getNodeInnerText node
+  # Read the "text content" of a sub-tree of the DOM by creating a selection from it
+  getNodeSelectionText: (node) ->
+     range = document.createRange()
+     range.setStartBefore node
+     range.setEndAfter node
+     sel = window.getSelection()
+     sel.removeAllRanges()
+     sel.addRange range
+     text = sel.toString()
+     sel.removeAllRanges()
+     text.trim()
 
-    if not innerText? or innerText is "" then return index
-
-    if parentText?
-      startIndex = parentText.indexOf innerText, index
+  getNodeContent: (node) ->
+    switch @contentMode
+      when "innerText" then @getNodeInnerText node
+      when "selection" then @getNodeSelectionText node
+        
+  collectStrings: (node, parentPath, parentContent = null, parentIndex = 0, index = 0, results = []) ->
+#    console.log "Doing path " + parentPath    
+    content = @getNodeContent node
+    if not content? or content is ""
+#      console.log "No content here."  
+      return index
     else
-      startIndex = index
+#      console.log "Content is '" + content + "'"
 
-    if startIndex is -1 then return index
-    endIndex = startIndex + innerText.length
+    startIndex = if parentContent? then (parentContent.indexOf content, index) else index
+
+    if startIndex is -1
+#      console.log "Content ('" + content + "' is not found in parentConent '" + parentContent + "'."
+      return index
+
+    endIndex = startIndex + content.length
     atomic = not node.hasChildNodes()
     results.push
       "path": parentPath
-      "innerText": innerText
+      "node": node
+      "content": content
       "start": parentIndex + startIndex
       "end": parentIndex + endIndex
       "atomic" : atomic
@@ -260,7 +293,7 @@ class window.DomSearcher
         newCount = if oldCount? then oldCount + 1 else 1
         typeCount[nodeName] = newCount
         childPath = parentPath + "/" + nodeName + (if newCount > 1 then "[" + newCount + "]" else "")
-        pos=@collectStrings child, childPath, innerText, parentIndex + startIndex, pos, results
+        pos=@collectStrings child, childPath, content, parentIndex + startIndex, pos, results
         i++
 
     endIndex
@@ -270,6 +303,4 @@ class window.DomSearcher
     results = []
     @collectStrings node, path, null, 0, 0, results
     results
-
-  collectMatchingNodes: (sr) ->
 

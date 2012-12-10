@@ -89,6 +89,7 @@ Sadly, ng-maxlength does not yet support expressions. Pull request is pending:
 	      <tr>
 		<th>Path</th>
 		<th>Text</th>
+		<th>Wanted</th>
 		<th>Full</th>
 		<th>From</th>
 		<th>Till</th>
@@ -96,8 +97,9 @@ Sadly, ng-maxlength does not yet support expressions. Pull request is pending:
 	    </thead>
 	    <tbody>
 	      <tr ng-repeat="match in detailedResults">
-		<td>{{match.path}}</td>
-		<td>{{match.text}}</td>
+		<td>{{match.element.path}}</td>
+		<td>'{{match.element.content}}'</td>
+		<td>'{{match.wanted}}'</td>
 		<td>{{match.full | booleanCheckmark}}</td>
 		<td>{{match.start}}</td>
 		<td>{{match.end}}</td>

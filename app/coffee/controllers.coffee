@@ -35,7 +35,7 @@ class SearchController
           when "page"
             @sourceModeNeedsInput = true
             @domSearcher.setRealRoot()
-            @checkPathsDelayed()
+            @checkPaths()
             @searchTerm = "very"
             @searchPos = 0
           when "sample1"
@@ -44,42 +44,35 @@ class SearchController
               @renderSource = data
               @searchTerm = "formal truth jiggles the brain"
               @searchPos = 1000
-              @checkPathsDelayed()
+              @checkPaths()
 
     $scope.init()
 
     $scope.checkPaths = ->
-      @paths = @domSearcher.getAllPaths()
-      @selectedPath = @paths[0].path
-      @canSearch = true
-
-    $scope.checkPathsDelayed = ->
       # wait for the browser to render the DOM for the new HTML
-      $timeout => @checkPaths()  
+      $timeout =>
+        @paths = @domSearcher.getAllPaths()
+        @selectedPath = @paths[0].path
+        @canSearch = true
 
     $scope.render = ->
       @renderSource = ""
       $timeout =>  
         @renderSource = @localSource
         @cleanResults()
-        @checkPathsDelayed()
+        @checkPaths()
 
     $scope.search = ->
-      @undoHilite()
+      if @sr? then @domSearcher.undoHighlight @sr
+
       @sr = @domSearcher.search @selectedPath, @searchTerm, @searchPos, @matchDistance, @matchThreshold / 100
       if @sr?
-        @searchResults = if @sr.found is @searchTerm then " (Exact match.)" else " (Found this: '" + @sr.found + "')"
+        @searchResults = if @sr.exact then " (Exact match.)" else " (Found this: '" + @sr.found + "')"
         @detailedResults = @sr.nodes
         @domSearcher.highlight @sr
-#        console.log @sr.undoHilite
       else
         @searchResults = "Pattern not found."
         @detailedResults = []
-
-    $scope.undoHilite = ->
-      if not @sr? then return  
-      @domSearcher.undoHighlight @sr
-      @sr = null
 
 angular.module('innerPeace.controllers', [])
   .controller('SearchController', SearchController)

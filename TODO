@@ -1,6 +1,11 @@
 Really should do:
- - Return a DOM range (for selection), instead of the current custom data structure
+ - Resolve difference in results between FF and Chrome
+    Text: "s <br/> a test te xt"
+    Pattern: "sex text"
+   Current workaround takes care of this, but should think about this more.
+
  - Solve whitespace issues
+
  - Solve pattern length limit issue - search for start & end, select everything in-between?
 
 If nothing better to do:

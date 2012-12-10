@@ -293,7 +293,7 @@ class window.DomSearcher
      sel.addRange range
      text = sel.toString()
      sel.removeAllRanges()
-     text.trim()
+     text.trim().replace /[ ]\n/g, "\n"
 
   getNodeContent: (node) ->
     switch @contentMode

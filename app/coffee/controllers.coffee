@@ -17,6 +17,7 @@ class SearchController
       @compatibility = @domSearcher.testBrowserCompatibility()
       @rootId = "rendered-dom" #this is ID of the DOM element we use for rendering the demo HTML
       @sourceMode = "local"
+      @foundAction = "select"
       @localSource = "This is <br /> a <i>   test    </i> <b>    te   xt   </b>. <div>Has <div>some</div><div>divs</div>, too.</div>"
       @atomicOnly = true
       @searchPos = 0
@@ -71,8 +72,9 @@ class SearchController
       if @sr?
         @searchResults = if @sr.exact then " (Exact match.)" else " (Found this: '" + @sr.found + "')"
         @detailedResults = @sr.nodes
-#        @domSearcher.highlight @sr
-        @domSearcher.select @sr
+        switch @foundAction
+          when "hilite" then @domSearcher.highlight @sr
+          when "select" then @domSearcher.select @sr
       else
         @searchResults = "Pattern not found."
         @detailedResults = []

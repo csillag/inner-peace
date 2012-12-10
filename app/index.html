@@ -68,13 +68,20 @@ Sadly, ng-maxlength does not yet support expressions. Pull request is pending:
 	  <span class="error" ng-show="searchForm.searchTerm.$error.maxlength">
 	    Too long! Text matching library is limited to {{maxPatternLength}} characters.
 	  </span>
-          <br />
+          <hr />
 	  Search position:
 	  <input type="number" ng-model="searchPos" min="0" />
           Match distance:
           <input type="number" ng-model="matchDistance" min="0" />
 	  Match threshold:
           <input type="number" ng-model="matchThreshold" min="0" max="100" />
+	  <hr />
+          What to do with result?
+          <select ng-model="foundAction">
+	    <option value="nothing">Do nothing</option>
+	    <option value="select">Select it</option>
+	    <option value="hilite">Highlight it (using SPANs)</option>
+	  </select>
 	  <button ng-disabled="!searchForm.$valid" ng-click="search()">Search!</button>
 	  <!-- 	<button ng-disabled="!sr" ng-click="undoHilite()">Remove highlighting</button> -->
 	</form>

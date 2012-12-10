@@ -1,5 +1,9 @@
- - Scroll to selection
+Really should do:
+ - Return a DOM range (for selection), instead of the current custom data structure
  - Solve whitespace issues
- - Solve FF compatibility issue - do InnerText manually?
  - Solve pattern length limit issue - search for start & end, select everything in-between?
- - Mark selected path (even before searching)
+
+If nothing better to do:
+ - Scroll to selection
+ - Indicate the area designated by searchPath (even before searching)
+ - Make the mappings listing html part a directive

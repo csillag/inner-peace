@@ -63,8 +63,10 @@ class window.DMPMatcher
     dneIndex = @dmp.match_main txet, nrettap, expectedDneLoc
     endIndex = text.length - dneIndex
     matchLength = endIndex - startIndex
+    found = text.substr startIndex, matchLength
 
     result =
       start: startIndex
       end: endIndex
-      found: text.substr startIndex, matchLength
+      found: found
+      exact: found is pattern

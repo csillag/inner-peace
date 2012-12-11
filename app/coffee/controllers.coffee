@@ -18,7 +18,7 @@ class SearchController
       @rootId = "rendered-dom" #this is ID of the DOM element we use for rendering the demo HTML
       @sourceMode = "local"
       @foundAction = "select"
-      @localSource = "This is <br /> a <i>   test    </i> <b>    te   xt   </b>. <div>Has <div>some</div><div>divs</div>, too.</div>"
+      @localSource = "This is <br /> a <i>   test    </i> <b>    text   </b>. <div>Has <div>some</div><div>divs</div>, too.</div>"
       @atomicOnly = true
       @searchPos = 0
       @maxPatternLength = @domSearcher.getMaxPatternLength()
@@ -65,6 +65,30 @@ class SearchController
         @cleanResults()
         @checkPaths()
 
+    $scope.explainDistance = ->
+      alert """
+
+  The following example is a classic dilemma.
+
+  There are two potential matches, one is close to the expected location but contains a one character error, the other is far from the expected location but is exactly the pattern sought after:
+   
+  match_main(\"abc12345678901234567890abbc\", \"abc\", 26)
+   
+  Which result is returned (0 or 24) is determined by the MatchDistance property.
+   
+  An exact letter match which is 'distance' characters away from the fuzzy location would score as a complete mismatch. For example, a distance of '0' requires the match be at the exact location specified, whereas a threshold of '1000' would require a perfect match to be within 800 characters of the expected location to be found using a 0.8 threshold (see below).
+
+  The larger MatchDistance is, the slower search may take to compute.
+  """
+
+    $scope.explainThreshold = ->
+      alert """
+
+  MatchThreshold determines the cut-off value for a valid match.
+    
+  If Match_Threshold is closer to 0, the requirements for accuracy increase. If Match_Threshold is closer to 100 then it is more likely that a match will be found. The larger Match_Threshold is, the slower search may take to compute.
+  """
+
     $scope.search = ->
       if @sr? then @domSearcher.undoHighlight @sr
 
@@ -73,7 +97,7 @@ class SearchController
         @searchResults = if @sr.exact then " (Exact match.)" else " (Found this: '" + @sr.found + "')"
         @detailedResults = @sr.nodes
         switch @foundAction
-          when "hilite" then @domSearcher.highlight @sr
+          when "hilite" then @domSearcher.highlight @sr, "hl"
           when "select" then @domSearcher.select @sr
       else
         @searchResults = "Pattern not found."

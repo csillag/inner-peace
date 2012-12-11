@@ -71,15 +71,15 @@ Sadly, ng-maxlength does not yet support expressions. Pull request is pending:
           <hr />
 	  Search position:
 	  <input type="number" ng-model="searchPos" min="0" />
-          Match distance:
+          Match distance: <a ng-click="explainDistance()">?</a>
           <input type="number" ng-model="matchDistance" min="0" />
-	  Match threshold:
+	  Match threshold: <a ng-click="explainThreshold()">?</a>
           <input type="number" ng-model="matchThreshold" min="0" max="100" />
 	  <hr />
           What to do with result?
           <select ng-model="foundAction">
 	    <option value="nothing">Do nothing</option>
-	    <option value="select">Select it</option>
+	    <option value="select">Select it (by creating a Range, and add it to Selection)</option>
 	    <option value="hilite">Highlight it (using SPANs)</option>
 	  </select>
 	  <button ng-disabled="!searchForm.$valid" ng-click="search()">Search!</button>

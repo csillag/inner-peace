@@ -122,7 +122,7 @@ class window.DomSearcher
      sel.addRange searchResult.range
 
   # Call this to highlight search results
-  highlight: (searchResult) ->
+  highlight: (searchResult, hiliteClass) ->
 
     toInsert = []
     toRemove = []
@@ -133,7 +133,7 @@ class window.DomSearcher
         clone = node.cloneNode()
         match.element.node = clone
         if match.full # easy to do, can highlight full element
-          hl = @hilite node
+          hl = @hilite node, hiliteClass
           toInsert.push
             node: clone
             before: hl
@@ -142,7 +142,7 @@ class window.DomSearcher
           if not match.end? # from the start, to a given position
             secondPart = node.splitText(match.startCorrected)
             firstPart = secondPart.previousSibling
-            hl = @hilite secondPart
+            hl = @hilite secondPart, hiliteClass
             toInsert.push
               node: clone
               before: firstPart
@@ -151,7 +151,7 @@ class window.DomSearcher
           else if not match.start? # from a position till the end
             secondPart = node.splitText(match.endCorrected)
             firstPart = secondPart.previousSibling
-            hl = @hilite firstPart
+            hl = @hilite firstPart, hiliteClass
             toInsert.push
               node: clone
               before: hl
@@ -161,7 +161,7 @@ class window.DomSearcher
             secondPart = node.splitText(match.startCorrected)
             firstPart = secondPart.previousSibling
             thirdPart = secondPart.splitText(match.end - match.start)
-            hl = @hilite secondPart
+            hl = @hilite secondPart, hiliteClass
             toInsert.push
               node: clone
               before: firstPart
@@ -191,9 +191,9 @@ class window.DomSearcher
 #    "innerText"
   careAboutNodeType: @contentMode is "innerText"
 
-  hilite: (node) ->
+  hilite: (node, className) ->
     hl = document.createElement "span"
-    hl.setAttribute "class", "hl"
+    hl.setAttribute "class", className
     hl.appendChild node.cloneNode()
     node.parentNode.insertBefore hl, node
     node.parentNode.removeChild node        

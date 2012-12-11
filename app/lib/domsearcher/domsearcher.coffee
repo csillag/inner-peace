@@ -56,6 +56,7 @@ class window.DomSearcher
   # If no match is found, null is returned.  # 
   search: (searchPath, searchPattern, searchPos, matchDistance = 1000, matchThreshold = 0.5) ->
 
+    searchPattern = searchPattern.trim()
     maxLength = @getMaxPatternLength()
     wantedLength = searchPattern.length
     if wantedLength > maxLength
@@ -70,41 +71,26 @@ class window.DomSearcher
       mappings = @collectMappings searchPath                
       matches = []
       for mapping in mappings when mapping.atomic and @regions_overlap mapping.start, mapping.end, sr.start, sr.end
-        do (mapping) ->
+        do (mapping) =>
           match =
             element: mapping
-          # take care of useless whitespaces at the start of the node
-          offset = mapping.node.data.indexOf mapping.content
-          # TODO: what about compacted whitespace mid-element?         
           full_match = sr.start <= mapping.start and mapping.end <= sr.end
           if full_match 
             match.full = true
             match.wanted = mapping.content
-            match.yields = mapping.node.data
-          else if offset is -1
-            console.log "Problem identifying proper offset from inside this text block."
-            # this is _not a full match, but we can't reliably find the position,
-            # so wi will treat it as such.
-            match.full = true
-            match.yields = mapping.node.data            
           else
            if sr.start <= mapping.start
               match.end = sr.end - mapping.start
               match.wanted = mapping.content.substr 0, match.end                
-              match.endCorrected = match.end + offset
-              match.yields = mapping.node.data.substr 0, match.endCorrected
             else if mapping.end <= sr.end
               match.start = sr.start - mapping.start
               match.wanted = mapping.content.substr match.start        
-              match.startCorrected = match.start + offset
-              match.yields = mapping.node.data.substr match.startCorrected
             else
               match.start = sr.start - mapping.start
               match.end = sr.end - mapping.start
               match.wanted = mapping.content.substr match.start, match.end - match.start
-              match.startCorrected = match.start + offset
-              match.endCorrected = match.end + offset
-              match.yields = mapping.node.data.substr match.startCorrected, match.end - match.start
+          @computeSourcePositions match
+          match.yields = mapping.node.data.substr match.startCorrected, match.endCorrected - match.startCorrected
           matches.push match
       sr.nodes = matches
 
@@ -295,25 +281,50 @@ class window.DomSearcher
      sel.removeAllRanges()
      text.trim().replace /[ ]\n/g, "\n"
 
+  # Convert "display" text indices to "source" text indices.
+  computeSourcePositions: (match) ->
+    sourceText = match.element.node.data.replace /\n/g, " "
+    # the HTML source of the text inside a text element.
+
+    displayText = match.element.content
+    # what gets displayed, when the node is processed by the browser.
+
+    displayStart = if match.start? then match.start else 0
+    displayEnd = if match.end? then match.end else displayText.length
+    # The selected range in displayText.
+
+    sourceIndex = 0
+    displayIndex = 0
+
+    until sourceStart? and sourceEnd?
+      sc = sourceText[sourceIndex]
+      dc = displayText[displayIndex]
+      if sc is dc
+        if displayIndex is displayStart
+          sourceStart = sourceIndex
+        displayIndex++        
+        if displayIndex is displayEnd
+          sourceEnd = sourceIndex + 1
+
+      sourceIndex++
+    match.startCorrected = sourceStart
+    match.endCorrected = sourceEnd
+    null
+
   getNodeContent: (node) ->
     switch @contentMode
       when "innerText" then @getNodeInnerText node
       when "selection" then @getNodeSelectionText node
-        
+
   collectStrings: (node, parentPath, parentContent = null, parentIndex = 0, index = 0, results = []) ->
-#    console.log "Doing path " + parentPath    
     content = @getNodeContent node
-    if not content? or content is ""
-#      console.log "No content here."  
-      return index
-    else
-#      console.log "Content is '" + content + "'"
 
+    if not content? or content is "" then  return index
+    # node has no content    
+        
     startIndex = if parentContent? then (parentContent.indexOf content, index) else index
-
-    if startIndex is -1
-#      console.log "Content ('" + content + "' is not found in parentConent '" + parentContent + "'."
-      return index
+    if startIndex is -1 then return index
+    # content of node is not present in parant's content - probably hidden, or something similar    
 
     endIndex = startIndex + content.length
     atomic = not node.hasChildNodes()

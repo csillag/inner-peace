@@ -34,7 +34,7 @@ class SearchController
             @searchPos = 0
             @matchDistance = 1000
           when "page"
-            @sourceModeNeedsInput = true
+            @sourceModeNeedsInput = true        
             @domSearcher.setRealRoot()
             @checkPaths()
             @searchTerm = "very"
@@ -59,11 +59,10 @@ class SearchController
         @canSearch = true
 
     $scope.render = ->
-      @renderSource = ""
-      $timeout =>  
-        @renderSource = @localSource
-        @cleanResults()
-        @checkPaths()
+      #this function is called from a child scope, so we can't replace $scope with @ here.     
+      $scope.renderSource = @localSource
+      $scope.cleanResults()
+      $scope.checkPaths()
 
     $scope.explainDistance = ->
       alert """

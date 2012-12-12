@@ -274,7 +274,7 @@ class window.DomSearcher
      sel = window.getSelection()
 
      # save the original selection
-     oldRanges = if sel.rangeCount then sel.getRangeAt i for i in [0 .. sel.rangeCount-1] else []
+     oldRanges = if sel.rangeCount is 0 then [] else sel.getRangeAt i for i in [0 .. sel.rangeCount-1]
 
      # clear the selection
      sel.removeAllRanges()

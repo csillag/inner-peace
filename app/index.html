@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <title>The Search For Inner[Text] Peace</title>
+  <link rel="stylesheet" href="lib/bootstrap/css/bootstrap.css" />
   <link rel="stylesheet" href="css/app.css"/>
 </head>
 <body>
@@ -29,20 +30,28 @@
   <h1>The Search for Inner[Text] Peace</h1>
 
   <div ng-controller="SearchController" ng-cloak>
+
     <div ng-show="!compatibility.ok">{{compatibility.message}}</div>
+
     <div ng-show="compatibility.ok">
-      HTML input source:
-      <select ng-model="sourceMode">
-	<option value="local">Input HTML source manually</option>
-	<option value="page">Use this page</option>
-	<option value="sample1">Use sample article 1</option>
-      </select>
+      <form class="form-horizontal">
+	<div class="control-group">
+	  <label class="control-label">HTML input source</label>
+	  <div class="controls">
+	    <select ng-model="sourceMode">
+	      <option value="local">Input HTML source manually</option>
+	      <option value="page">Use this page</option>
+	      <option value="sample1">Use sample article 1</option>
+	    </select>
+	  </div>
+	</div>
+      </form>
       
       <div id="source-spec" ng-show="sourceModeNeedsInput" ng-switch on="sourceMode">
 	<div ng-switch-when="local"> 
-	  <p>Test html source:</p>
-	  <textarea ng-model="localSource" id="source-editor"></textArea>
-	  <button ng-click="render()">Render it!</button>
+	  <h3>Test html source:</h3>
+	  <textarea ng-model="localSource" class="input-block-level"></textArea>
+	  <button class="btn btn-primary" ng-click="render()">Render it!</button>
 	</div>
 
 	<div ng-switch-when="page">
@@ -52,85 +61,106 @@
       </div>
 
       <div id="search-input" ng-show="canSearch">
-	<form name="searchForm">
-          DOM element to scan:
-	  <select ng-model="selectedPath" ng-options="path.path as path.path + ' (' + path.length +' chars)' for path in paths"></select>
-          <hr />
-	  Search term:
-	  <input type="text" name="searchTerm" ng-model="searchTerm" ng-maxlength="32" required="true" />
-<!--
-	<input type="text" name="searchTerm" ng-model="searchTerm" ng-maxlength="{{maxPatternLength}}" required="true" /> 
- 
-Sadly, ng-maxlength does not yet support expressions. Pull request is pending:
-  https://github.com/angular/angular.js/issues/1405
--->
-
-
-	  <span class="error" ng-show="searchForm.searchTerm.$error.maxlength">
+	<h3>Search</h3>
+	<form name="searchForm" class="form-horizontal">
+	  <input type="text" name="searchTerm" ng-model="searchTerm" ng-maxlength="32" required="true" class="input-xxlarge search-query" />
+	  <button ng-disabled="!searchForm.$valid" ng-click="search()" class="btn btn-primary">
+	    <i class="icon-search"></i>
+	    Search
+	  </button>
+	  <span class="help-inline error" ng-show="searchForm.searchTerm.$error.maxlength">
 	    Too long! Text matching library is limited to {{maxPatternLength}} characters.
 	  </span>
-          <hr />
-	  Search position:
-	  <input type="number" ng-model="searchPos" min="0" />
-          Match distance: <a ng-click="explainDistance()">?</a>
-          <input type="number" ng-model="matchDistance" min="0" />
-	  Match threshold: <a ng-click="explainThreshold()">?</a>
-          <input type="number" ng-model="matchThreshold" min="0" max="100" />
-	  <hr />
-          What to do with result?
-          <select ng-model="foundAction">
-	    <option value="nothing">Do nothing</option>
-	    <option value="select">Select it (by creating a Range, and add it to Selection)</option>
-	    <option value="hilite">Highlight it (using SPANs)</option>
-	  </select>
-	  <button ng-disabled="!searchForm.$valid" ng-click="search()">Search!</button>
-	  <!-- 	<button ng-disabled="!sr" ng-click="undoHilite()">Remove highlighting</button> -->
+	  <input type="checkbox" ng-model="advancedSearch">Show detailed controls</input>
+	  <div ng-show="advancedSearch">
+	    <br />
+	    <div class="control-group">
+	      <label class="control-label">DOM element to scan</label>
+	      <div class="controls">
+		<select ng-model="selectedPath" ng-options="path.path as path.path + ' (' + path.length +' chars)' for path in paths"></select>
+	      </div>
+	    </div>
+	    <div class="control-group">
+	      <label class="control-label">Search position</label>
+	      <div class="controls">
+		<input type="number" ng-model="searchPos" min="0" class="input-mini"/>
+	      </div>
+	    </div>
+	    <div class="control-group">
+	      <label class="control-label">Match distance</label>
+	      <div class="controls">
+		<input type="number" ng-model="matchDistance" min="0" class="input-mini"/>
+		<a ng-click="explainDistance()">?</a>
+	      </div>
+	    </div>
+	    <div class="control-group">
+	      <label class="control-label">Match threshold</label>
+	      <div class="controls">
+		<input type="number" ng-model="matchThreshold" min="0" max="100" class="input-mini"/>
+		<a ng-click="explainThreshold()">?</a>
+	      </div>
+	    </div>
+	    <div class="control-group">
+	      <label class="control-label">What to do with result?</label>
+	      <div class="controls">
+		<select ng-model="foundAction" class="input-xxlarge">
+		  <option value="nothing">Do nothing</option>
+		  <option value="select">Select it (by creating a Range, and add it to Selection)</option>
+		  <option value="hilite">Highlight it (using SPANs)</option>
+		</select>
+	      </div>
+	    </div>
+	  </div>
 	</form>
-      </div>
-      
-      <div id="search-results" ng-show="searchResults.length>0 || detailedResults.length>0">
-	{{searchResults}}
-	<input type="checkbox" ng-model="showDetailedResults">Show detailed results</input>
-	<div id="search-matching-elements" ng-show="showDetailedResults && detailedResults.length>0">
-	  <p>Involved elements:</p>
-	  <table border="1">
-	    <thead>
-	      <tr>
-		<th rowspan="2">Path</th>
-		<th rowSpan="2">Full</th>
-		<th colSpan="4">Displayed text</th>
-		<th colSpan="4">Actual HTML source text</th>
-	      </tr>
-	      <tr>
-		<th>Text</th>
-		<th>Wanted</th>
-		<th>From</th>
-		<th>Till</th>
-		<th>Text</th>
-		<th>From</th>
-		<th>Till</th>
-		<th>Yields</th>
-	      </tr>
-	    </thead>
-	    <tbody>
-	      <tr ng-repeat="match in detailedResults">
-		<td>{{match.element.path}}</td>
-		<td>{{match.full | booleanCheckmark}}</td>
-		<td>'{{match.element.content}}'</td>
-		<td>'{{match.wanted}}'</td>
-		<td>{{match.start}}</td>
-		<td>{{match.end}}</td>
-		<td ng-bind-html-unsafe="match.element.node.data | quoteHTML"></td>
-		<td>{{match.startCorrected}}</td>
-		<td>{{match.endCorrected}}</td>
-		<td ng-bind-html-unsafe="match.yields | quoteHTML"></td>
-	      </tr>
-	    </tbody>
-	  </table>
+
+	<div ng-show="searchResults.length>0 || detailedResults.length>0">
+	  <h3>Search results</h3>
+	  <div>
+	    {{searchResults}}
+	  </div>
+	  <input type="checkbox" ng-model="showDetailedResults">Show detailed results</input>
+	  <div id="search-matching-elements" ng-show="showDetailedResults && detailedResults.length>0">
+	    <p>Involved elements:</p>
+	    <table border="1">
+	      <thead>
+		<tr>
+		  <th rowspan="2">Path</th>
+		  <th rowSpan="2">Full</th>
+		  <th colSpan="4">Displayed text</th>
+		  <th colSpan="4">Actual HTML source text</th>
+		</tr>
+		<tr>
+		  <th>Text</th>
+		  <th>Wanted</th>
+		  <th>From</th>
+		  <th>Till</th>
+		  <th>Text</th>
+		  <th>From</th>
+		  <th>Till</th>
+		  <th>Yields</th>
+		</tr>
+	      </thead>
+	      <tbody>
+		<tr ng-repeat="match in detailedResults">
+		  <td>{{match.element.path}}</td>
+		  <td>{{match.full | booleanCheckmark}}</td>
+		  <td>'{{match.element.content}}'</td>
+		  <td>'{{match.wanted}}'</td>
+		  <td>{{match.start}}</td>
+		  <td>{{match.end}}</td>
+		  <td ng-bind-html-unsafe="match.element.node.data | quoteHTML"></td>
+		  <td>{{match.startCorrected}}</td>
+		  <td>{{match.endCorrected}}</td>
+		  <td ng-bind-html-unsafe="match.yields | quoteHTML"></td>
+		</tr>
+	      </tbody>
+	    </table>
+	  </div>
 	</div>
       </div>
-      <div ng-show="renderSource">
-	<h2>DOM rendered as:</h2>
+
+      <div ng-show="renderSource" id="sandbox">
+	<h3>DOM rendered as:</h3>
 	<div id="rendered-dom" ng-bind-html-unsafe="renderSource"></div>
       </div>
     </div>

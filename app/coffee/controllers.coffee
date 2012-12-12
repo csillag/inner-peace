@@ -93,7 +93,7 @@ class SearchController
 
       @sr = @domSearcher.search @selectedPath, @searchTerm, @searchPos, @matchDistance, @matchThreshold / 100
       if @sr?
-        @searchResults = if @sr.exact then " (Exact match.)" else " (Found this: '" + @sr.found + "')"
+        @searchResults = if @sr.exact then "Found exact match." else "Found this: '" + @sr.found + "'"
         @detailedResults = @sr.nodes
         switch @foundAction
           when "hilite" then @domSearcher.highlight @sr, "hl"

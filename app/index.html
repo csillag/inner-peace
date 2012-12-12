@@ -70,10 +70,13 @@
 	    <i class="icon-search"></i>
 	    Search
 	  </button>
+	  <button ng-click="advancedSearch = !advancedSearch" class="btn">
+	    <i class="icon-wrench"></i>
+	    Settings
+	  </button>
 	  <span class="help-inline error" ng-show="searchForm.searchTerm.$error.maxlength">
 	    Too long! Text matching library is limited to {{maxPatternLength}} characters.
 	  </span>
-	  <input type="checkbox" ng-model="advancedSearch">Show detailed controls</input>
 	  <div ng-show="advancedSearch">
 	    <br />
 	    <div class="control-group">
@@ -118,9 +121,14 @@
 	<div ng-show="searchResults.length>0 || detailedResults.length>0">
 	  <h3>Search results</h3>
 	  <div>
-	    {{searchResults}}
+	    <strong>
+	      {{searchResults}}
+	    </strong>
 	  </div>
-	  <input type="checkbox" ng-model="showDetailedResults">Show detailed results</input>
+	  <button class="btn btn-mini" ng-click="showDetailedResults = true" ng-show="!showDetailedResults">
+	    <i class="icon-zoom-in"></i>
+	    Show details...
+	  </button>
 	  <div id="search-matching-elements" ng-show="showDetailedResults && detailedResults.length>0">
 	    <p>Involved elements:</p>
 	    <table border="1">

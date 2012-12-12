@@ -96,6 +96,7 @@ class SearchController
       if @sr?
         @searchResults = if @sr.exact then "Found exact match." else "Found this: '" + @sr.found + "'"
         @detailedResults = @sr.nodes
+        @showDetailedResults = false
         switch @foundAction
           when "hilite" then @domSearcher.highlight @sr, "hl"
           when "select" then @domSearcher.select @sr

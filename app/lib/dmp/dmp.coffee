@@ -52,13 +52,52 @@ class window.DMPMatcher
   #
   # If no match is found, the function returns null.
   search: (text, pattern, expectedStartLoc = 0) ->
+    unless text? then throw new Error "Can't search in null text!"
+    unless pattern? then throw new Error "Can't search for null pattern!"
+    unless expectedStartLoc >= 0 then throw new Error "Can't search at negavive indices!"
 
-    startIndex = @dmp.match_main text, pattern, expectedStartLoc
+    pLen = pattern.length
+    maxLen = @getMaxPatternLength()
+
+    if pLen <= maxLen
+      return @searchForSlice text, pattern, expectedStartLoc
+    else
+      startSlice = pattern.substr 0, maxLen
+      startPos = @searchForSlice text, startSlice, expectedStartLoc
+      if startPos?
+        endSlice = pattern.substr pLen - maxLen, maxLen
+        endLoc = startPos.start + pLen - maxLen
+        endPos = @searchForSlice text, endSlice, endLoc
+        if endPos?
+          matchLen = endPos.end - startPos.start
+          if pLen*0.5 <= matchLen <= pLen*1.5
+            found = text.substr startPos.start, matchLen
+            return {
+              start: startPos.start
+              end: endPos.end
+              found: found
+              exact: found is pattern    
+            }
+#          else
+#            console.log "Sorry, matchLen (" + matchLen + ") is not between " + 0.5*pLen + " and " + 1.5*pLen
+#        else
+#          console.log "endSlice ('" + endSlice + "') not found"
+#      else
+#        console.log "startSlice ('" + startSlice + "') not found"
+
+    null
+
+  # ============= Private part ==========================================
+  # You don't need to call the functions below this point manually
+
+  searchForSlice: (text, slice, expectedStartLoc) ->
+
+    startIndex = @dmp.match_main text, slice, expectedStartLoc
     if startIndex is -1 then return
         
     txet = @_reverse text
-    nrettap = @_reverse pattern
-    expectedEndLoc = startIndex + pattern.length
+    nrettap = @_reverse slice
+    expectedEndLoc = startIndex + slice.length
     expectedDneLoc = text.length - expectedEndLoc
     dneIndex = @dmp.match_main txet, nrettap, expectedDneLoc
     endIndex = text.length - dneIndex
@@ -69,4 +108,4 @@ class window.DMPMatcher
       start: startIndex
       end: endIndex
       found: found
-      exact: found is pattern
+      exact: found is slice

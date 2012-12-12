@@ -40,6 +40,11 @@ Or see the [live demo](http://s3.amazonaws.com/inner-peace-demo/index.html).
    will need to look into this later.
    See thread [here](https://groups.google.com/forum/?fromgroups=#!topic/diff-match-patch/VgAdlYBCHzU).
 
+   Currently, this is worked around by searching for the first and the last 32-bit slice
+   of the pattern, and if both is found, and the distance is about right, then it's accepted
+   as match. What goes between the start and the end slice is not analyzed.
+   This might lead to false matches.
+
 - Hidden nodes
  
    When the "display" property of a node is set to "none", it's not displayd, so it's content

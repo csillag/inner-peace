@@ -57,12 +57,6 @@ class window.DomSearcher
   search: (searchPath, searchPattern, searchPos, matchDistance = 1000, matchThreshold = 0.5) ->
 
     searchPattern = searchPattern.trim()
-    maxLength = @getMaxPatternLength()
-    wantedLength = searchPattern.length
-    if wantedLength > maxLength
-      alert "Pattern is longer than allowed by the search library. (Max is " + maxLength + "; requested is " + wantedLength + ".)"
-      return
-        
     @dmp.setMatchDistance matchDistance
     @dmp.setMatchThreshold matchThreshold
     @corpus = @getNodeContent @lookUpNode searchPath

@@ -58,14 +58,14 @@
 
 	<div ng-switch-when="page">
 	  <p>OK, so you want to test out the stuff on this very page.</p>
-	  <p>Feel free to do so, but please that content bellow this point will not be accessible.</p>
+	  <p>Feel free to do so, but please note that the content below this point will not be accessible.</p>
 	</div>
       </div>
 
       <div id="search-input" ng-show="canSearch">
 	<h3>Search</h3>
 	<form name="searchForm" class="form-horizontal">
-	  <input type="text" name="searchTerm" ng-model="searchTerm" ng-maxlength="32" required="true" class="input-xxlarge search-query" />
+	  <input type="text" name="searchTerm" ng-model="searchTerm" required="true" class="input-xxlarge search-query" />
 	  <button ng-disabled="!searchForm.$valid" ng-click="search()" class="btn btn-primary">
 	    <i class="icon-search"></i>
 	    Search
@@ -74,9 +74,6 @@
 	    <i class="icon-wrench"></i>
 	    Settings
 	  </button>
-	  <span class="help-inline error" ng-show="searchForm.searchTerm.$error.maxlength">
-	    Too long! Text matching library is limited to {{maxPatternLength}} characters.
-	  </span>
 	  <div ng-show="advancedSearch">
 	    <br />
 	    <div class="control-group">

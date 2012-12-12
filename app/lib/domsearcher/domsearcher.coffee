@@ -271,15 +271,29 @@ class window.DomSearcher
 
   # Read the "text content" of a sub-tree of the DOM by creating a selection from it
   getNodeSelectionText: (node) ->
+     sel = window.getSelection()
+
+     # save the original selection
+     oldRanges = if sel.rangeCount then sel.getRangeAt i for i in [0 .. sel.rangeCount-1] else []
+
+     # clear the selection
+     sel.removeAllRanges()
+
+     # create our range, and select it
      range = document.createRange()
      range.setStartBefore node
      range.setEndAfter node
-     sel = window.getSelection()
-     sel.removeAllRanges()
      sel.addRange range
-     text = sel.toString()
+
+     # read (and convert) the content of the selection
+     text = sel.toString().trim().replace /[ ]\n/g, "\n"
+
+     # restore original selection
      sel.removeAllRanges()
-     text.trim().replace /[ ]\n/g, "\n"
+     sel.addRange range for range in oldRanges
+
+     text
+
 
   # Convert "display" text indices to "source" text indices.
   computeSourcePositions: (match) ->

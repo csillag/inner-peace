@@ -52,3 +52,7 @@ span.hl {
 .popover {
     width: 400px;
 }
+
+#demo-app {
+    text-align: left;
+}

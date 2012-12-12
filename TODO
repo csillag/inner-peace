@@ -1,10 +1,8 @@
 Really should do:
  - Solve pattern length limit issue - search for start & end, select everything in-between?
- - Use [I]Frame for embedded content
- - Implement loading of different article
- - Add bootstrap
 
 If nothing better to do:
  - Scroll to selection
  - Indicate the area designated by searchPath (even before searching)
  - Make the mappings listing html part a directive
+ - Use [I]Frame for embedded content - X-Frame-Options make this hard, need to use a proxy...

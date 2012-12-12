@@ -1,8 +1,11 @@
 #Controllers
 
 class SearchController
-  this.$inject = ['$scope', '$timeout', '$http', 'domSearcher']
-  constructor: ($scope, $timeout, $http, domSearcher) ->
+  this.$inject = ['$document', '$scope', '$timeout', '$http', 'domSearcher']
+  constructor: ($document, $scope, $timeout, $http, domSearcher) ->
+
+    $document.find("#help1").popover(html:true)
+    $document.find("#help2").popover(html:true)
 
     $scope.cleanResults = ->
       @paths = []
@@ -64,11 +67,10 @@ class SearchController
       $scope.cleanResults()
       $scope.checkPaths()
 
-    $scope.explainDistance = ->
-      alert """
+    $scope.distanceExplanation = """
 
   The following example is a classic dilemma.
-
+        
   There are two potential matches, one is close to the expected location but contains a one character error, the other is far from the expected location but is exactly the pattern sought after:
    
   match_main(\"abc12345678901234567890abbc\", \"abc\", 26)
@@ -78,15 +80,14 @@ class SearchController
   An exact letter match which is 'distance' characters away from the fuzzy location would score as a complete mismatch. For example, a distance of '0' requires the match be at the exact location specified, whereas a threshold of '1000' would require a perfect match to be within 800 characters of the expected location to be found using a 0.8 threshold (see below).
 
   The larger MatchDistance is, the slower search may take to compute.
-  """
+  """.replace /\n/g, "<br />"
 
-    $scope.explainThreshold = ->
-      alert """
+    $scope.thresholdExplanation = """
 
   MatchThreshold determines the cut-off value for a valid match.
     
   If Match_Threshold is closer to 0, the requirements for accuracy increase. If Match_Threshold is closer to 100 then it is more likely that a match will be found. The larger Match_Threshold is, the slower search may take to compute.
-  """
+  """.replace /\n/g, "<br />"
 
     $scope.search = ->
       if @sr? then @domSearcher.undoHighlight @sr

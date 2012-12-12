@@ -48,3 +48,7 @@
 span.hl {
   background-color: yellow;
 }
+
+.popover {
+    width: 400px;
+}

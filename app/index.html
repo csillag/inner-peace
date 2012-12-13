@@ -53,7 +53,7 @@
 	<div ng-switch-when="local"> 
 	  <h3>Test html source:</h3>
 	  <textarea ng-model="localSource" class="input-block-level"></textArea>
-	  <button class="btn btn-primary" ng-click="render()">Render it!</button>
+	  <button class="btn btn-primary" type="button" ng-click="render()">Render it!</button>
 	</div>
 
 	<div ng-switch-when="page">
@@ -64,13 +64,13 @@
 
       <div id="search-input" ng-show="canSearch">
 	<h3>Search</h3>
-	<form name="searchForm" class="form-horizontal">
-	  <input type="text" name="searchTerm" ng-model="searchTerm" required="true" class="input-xxlarge search-query" />
-	  <button ng-disabled="!searchForm.$valid" ng-click="search()" class="btn btn-primary">
+	<form name="searchForm" ng-submit="search()" class="form-horizontal">
+	  <input type="text" name="searchTerm" ng-model="searchTerm" required="true" class="input-xxlarge search-query" placeholder="Enter search term"/>
+	  <button type="submit" ng-disabled="!searchForm.$valid" class="btn btn-primary">
 	    <i class="icon-search"></i>
 	    Search
 	  </button>
-	  <button ng-click="advancedSearch = !advancedSearch" class="btn">
+	  <button type="button" ng-click="advancedSearch = !advancedSearch" class="btn">
 	    <i class="icon-wrench"></i>
 	    Settings
 	  </button>

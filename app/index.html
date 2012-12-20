@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>The Search For Inner[Text] Peace</title>
+  <title>DOM Text Matcher Demo</title>
   <link rel="stylesheet" href="lib/bootstrap/css/bootstrap.min.css" />
   <link rel="stylesheet" href="css/app.css"/>
 </head>
@@ -17,11 +17,12 @@
   <!-- Allows for coffeescript compiling on the fly.                                    -->
   <!-- Not recommended for production use. See http://coffeescript.org/#scripts.        -->
   <script src="lib/coffeescript/coffee-script.js"></script>
-  <script src="lib/dmp/diff_match_patch.js"></script>
-  <script src="lib/dmp/dmp.coffee" type="text/coffeescript"></script>
-  <script src="lib/dmp/dmp_angular.coffee" type="text/coffeescript"></script>
-  <script src="lib/domsearcher/domsearcher.coffee" type="text/coffeescript"></script>
-  <script src="lib/domsearcher/domsearcher_angular.coffee" type="text/coffeescript"></script>
+  <script src="lib/diff_match_patch/diff_match_patch_uncompressed.js"></script>
+  <script src="lib/dom_text_mapper/dom_text_mapper.coffee" type="text/coffeescript"></script>
+
+  <script src="lib/dom_text_matcher/text_match_engines.coffee" type="text/coffeescript"></script>
+  <script src="lib/dom_text_matcher/dom_text_matcher.coffee" type="text/coffeescript"></script>
+  <script src="lib/dom_text_matcher/dom_text_matcher_angular.coffee" type="text/coffeescript"></script>
 
   <script src="coffee/services.coffee" type="text/coffeescript"></script>
   <script src="coffee/controllers.coffee" type="text/coffeescript"></script>
@@ -29,13 +30,11 @@
   <script src="coffee/directives.coffee" type="text/coffeescript"></script>
   <script src="coffee/app.coffee" type="text/coffeescript"></script>
 
-  <h1>The Search for Inner[Text] Peace</h1>
+  <h1>DOM Text Matcher Demo</h1>
 
   <div ng-controller="SearchController" ng-cloak>
 
-    <div ng-show="!compatibility.ok">{{compatibility.message}}</div>
-
-    <div id="demo-app" ng-show="compatibility.ok">
+    <div>
       <form class="form-horizontal">
 	<div class="control-group">
 	  <label class="control-label">HTML input source</label>
@@ -64,15 +63,20 @@
 
       <div id="search-input" ng-show="canSearch">
 	<h3>Search</h3>
-	<form name="searchForm" ng-submit="search()" class="form-horizontal">
+	<form name="searchForm" class="form-horizontal">
 	  <input type="text" name="searchTerm" ng-model="searchTerm" required="true" class="input-xxlarge search-query" placeholder="Enter search term"/>
-	  <button type="submit" ng-disabled="!searchForm.$valid" class="btn btn-primary">
-	    <i class="icon-search"></i>
-	    Search
+	  <button title="Previous match" type="button" ng-disabled="!searchForm.$valid || sr.matches.length <= 1" class="btn btn-primary btn-small" ng-click="moveMark(-1)">
+	    <i class="icon-chevron-up"></i>
 	  </button>
-	  <button type="button" ng-click="advancedSearch = !advancedSearch" class="btn">
+	  <button title="Next match" type="button" ng-disabled="!searchForm.$valid || sr.matches.length <= 1" class="btn btn-primary btn-small" ng-click="moveMark(1)">
+	    <i class="icon-chevron-down"></i>
+	  </button>
+	  <button title="All matches" type="button" ng-disabled="!searchForm.$valid || !singleMode" class="btn btn-primary btn-small" ng-click="markAll()">
+	    <i class="icon-th"></i>
+	  </button>
+
+	  <button title="Show settings" type="button" ng-click="advancedSearch = !advancedSearch" class="btn btn-small">
 	    <i class="icon-wrench"></i>
-	    Settings
 	  </button>
 	  <div ng-show="advancedSearch">
 	    <br />
@@ -82,91 +86,141 @@
 		<select ng-model="selectedPath" ng-options="path.path as path.path + ' (' + path.length +' chars)' for path in paths"></select>
 	      </div>
 	    </div>
+
 	    <div class="control-group">
-	      <label class="control-label">Search position</label>
+	      <label class="control-label">Text matching engine</label>
 	      <div class="controls">
-		<input type="number" ng-model="searchPos" min="0" required="true" class="input-mini"/>
+		<label class="radio">
+		  <input type="radio" ng-model="matchEngine" value="exact">
+		  Exact matching
+		</label>
+		<label class="radio">
+		  <input type="radio" ng-model="matchEngine" value="regex">
+		  Regex matching
+		</label>
+		<label class="radio">
+		  <input type="radio" ng-model="matchEngine" value="fuzzy">
+		  Fuzzy matching
+		</label>
 	      </div>
 	    </div>
+
 	    <div class="control-group">
-	      <label class="control-label">Match distance</label>
+	      <label class="control-label">Engine config</label>	      
 	      <div class="controls">
-		<input type="number" ng-model="matchDistance" min="0" required="true" class="input-mini"/>
-		<a id="help1" href="#" class="btn btn-info btn-mini" rel="popover" data-content="{{distanceExplanation}}" data-original-title="Match Distance property" data-trigger="hover">?</a>
+		<label class="checkbox" ng-show="matchEngine=='exact'">
+		  <input type="checkbox" ng-model="searchDistinct"/>
+		  No overlapping matches
+		</label>
+		<label ng-show="matchEngine=='fuzzy'">
+		  Expected match position
+		  <input type="number" ng-model="searchPos" min="0" required="true" class="input-mini"/>
+		</label>
+		<label ng-show="matchEngine=='fuzzy'">
+		  Match Distance
+		  <input type="number" ng-model="matchDistance" min="0" required="true" class="input-mini"/>
+		  <a id="help1" href="#" class="btn btn-info btn-mini" rel="popover" data-content="{{distanceExplanation}}" data-original-title="Match Distance property" data-trigger="hover">?</a>
+		</label>
+		<label class="checkbox">
+		  <input type="checkbox" ng-model="searchCaseSensitive"/>
+		  Case sensitive
+		</label>
+		<label ng-show="matchEngine=='fuzzy'">
+		  Match threshold
+		  <input type="number" ng-model="matchThreshold" min="0" max="100" required="true" class="input-mini"/>
+		  <a id="help2" href="#" class="btn btn-info btn-mini" rel="popover" data-content="{{thresholdExplanation}}" data-original-title="Match Threshold property" data-trigger="hover">?</a>
+		</label>
 	      </div>
 	    </div>
-	    <div class="control-group">
-	      <label class="control-label">Match threshold</label>
+	    <div class="control-group" ng-show="false">
+	      <label class="control-label">How to indicate matches?</label>
 	      <div class="controls">
-		<input type="number" ng-model="matchThreshold" min="0" max="100" required="true" class="input-mini"/>
-		<a id="help2" href="#" class="btn btn-info btn-mini" rel="popover" data-content="{{thresholdExplanation}}" data-original-title="Match Threshold property" data-trigger="hover">?</a>
-	      </div>
-	    </div>
-	    <div class="control-group">
-	      <label class="control-label">What to do with result?</label>
-	      <div class="controls">
-		<select ng-model="foundAction" class="input-xxlarge">
-		  <option value="nothing">Do nothing</option>
-		  <option value="select">Select it (by creating a Range, and add it to Selection)</option>
-		  <option value="hilite">Highlight it (using SPANs)</option>
-		</select>
+		<label class="radio">
+		  <input type="radio" ng-model="foundAction" value="hilite">
+		  Highlight text using SPANs
+		</label>
+		<label class="radio">
+		  <input type="radio" ng-model="foundAction" value="select">
+		  Select text using the DOM Range and Selection APIs
+		</label>
 	      </div>
 	    </div>
 	  </div>
 	</form>
 
-	<div ng-show="searchResults.length>0 || detailedResults.length>0">
+	<div ng-show="sr">
 	  <h3>Search results</h3>
-	  <div>
-	    <strong>
-	      {{searchResults}}
-	    </strong>
+	  
+	  <div ng-show="!sr.matches.length">
+	    <strong>Pattern not found.</strong>
 	  </div>
-	  <button class="btn btn-mini" ng-click="showDetailedResults = true" ng-show="!showDetailedResults">
-	    <i class="icon-zoom-in"></i>
-	    Show details...
-	  </button>
-	  <div id="search-matching-elements" ng-show="showDetailedResults && detailedResults.length>0">
-	    <button class="btn btn-mini" ng-click="showDetailedResults = false">
-	      <i class="icon-zoom-out"></i>
-	      Hide details
-	    </button>
-	    <p>Involved elements:</p>
-	    <table border="1">
-	      <thead>
-		<tr>
-		  <th rowspan="2">Path</th>
-		  <th rowSpan="2">Full</th>
-		  <th colSpan="4">Displayed text</th>
-		  <th colSpan="4">Actual HTML source text</th>
-		</tr>
-		<tr>
-		  <th>Text</th>
-		  <th>Wanted</th>
-		  <th>From</th>
-		  <th>Till</th>
-		  <th>Text</th>
-		  <th>From</th>
-		  <th>Till</th>
-		  <th>Yields</th>
-		</tr>
-	      </thead>
-	      <tbody>
-		<tr ng-repeat="match in detailedResults">
-		  <td>{{match.element.path}}</td>
-		  <td>{{match.full | booleanCheckmark}}</td>
-		  <td>'{{match.element.content}}'</td>
-		  <td>'{{match.wanted}}'</td>
-		  <td>{{match.start}}</td>
-		  <td>{{match.end}}</td>
-		  <td ng-bind-html-unsafe="match.element.node.data | quoteHTML"></td>
-		  <td>{{match.startCorrected}}</td>
-		  <td>{{match.endCorrected}}</td>
-		  <td ng-bind-html-unsafe="match.yields | quoteHTML"></td>
-		</tr>
-	      </tbody>
-	    </table>
+
+	  <div ng-show="sr.matches.length">
+	    Found {{sr.matches.length}} matches:
+	    <ol> 
+	      <li ng-repeat="match in sr.matches">
+		<strong ng-show="match.exact">exact match</strong>
+		<strong ng-show="!match.exact">'{{match.found}}'</strong>
+		at [{{match.start}}:{{match.end}}]
+		{{match.data}}
+		<p>Diff:
+		  <strong class="diff-shower" ng-bind-html-unsafe="match.hiddenData.diff"></strong>
+		</p>
+
+		<button class="btn btn-mini" ng-click="match.showDetails = true" ng-show="!match.showDetails">
+		  <i class="icon-zoom-in"></i>
+		  Show details...
+		</button>
+		<button class="btn btn-mini" ng-click="match.showDetails = false" ng-show="match.showDetails">
+		  <i class="icon-zoom-out"></i>
+		  Hide details
+		</button>
+		<div ng-show="match.showDetails">
+		  <h5>Involved DOM elements:</h5>
+		  <table border="1">
+		    <thead>
+		      <tr>
+			<th rowspan="2">Path</th>
+			<th rowSpan="2">Full</th>
+			<th colSpan="3">Displayed text</th>
+			<th colSpan="3">Actual HTML source text</th>
+		      </tr>
+		      <tr>
+ <!--			<th>Text</th> -->
+			<th>Wanted</th>
+			<th>From</th>
+			<th>Till</th>
+ <!--			<th>Text</th> -->
+			<th>From</th>
+			<th>Till</th>
+			<th>Yields</th>
+		      </tr>
+		    </thead>
+		    <tbody>
+		      <tr ng-repeat="match in match.nodes">
+			<td>{{match.element.path}}</td>
+			<td>{{match.full | booleanCheckmark}}</td>
+ <!--			<td>'{{match.element.content}}'</td> -->
+			<td>'{{match.wanted}}'</td>
+			<td>{{match.start}}</td>
+			<td>{{match.end}}</td>
+ <!--			<td ng-bind-html-unsafe="match.element.node.data | quoteHTML"></td> -->
+			<td>{{match.startCorrected}}</td>
+			<td>{{match.endCorrected}}</td>
+			<td ng-bind-html-unsafe="match.yields | quoteHTML"></td>
+		      </tr>
+		    </tbody>
+		  </table>
+		  <h5>DOM range:</h5>
+		  [{{match.rangeInfo.start}} - {{match.rangeInfo.end}}]
+		</div>
+	      </li>
+	    </ol>
 	  </div>
+	  <p>
+	    Search took {{sr.time.total}} ms. {{sr.time}}
+	    (Earlier, the DOM scanning took {{scanTime}} ms.)
+	  </p>
 	</div>
       </div>
 
@@ -174,6 +228,16 @@
 	<h3>DOM rendered as:</h3>
 	<div id="rendered-dom" ng-bind-html-unsafe="renderSource"></div>
       </div>
+
+      <div ng-show="sourceURL">
+	<iframe 
+	   id="dtm-demo-article-box" ng-src="{{sourceURL}}" 
+	   onload="if (typeof(dtm_frame_loaded) != 'undefined') { dtm_frame_loaded(); }"
+	>
+	</iframe>
+      </div>
+
+
     </div>
   </div>
 <hr />

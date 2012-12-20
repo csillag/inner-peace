@@ -1,11 +1,19 @@
 Really should do:
- - Improve workaround for pattern length limit issue
+ - update readme
+ - Return more data about the match[es]: how far were we from expected pos
+ - Allow searching with context
+
+Later:
+
+ - dom-text-matcher
+    - fix range selection
+ - DMP matcher:  
+    - Improve workaround for pattern length limit issue
+
 
 If nothing better to do:
  - Scroll to selection
  - Indicate the area designated by searchPath (even before searching)
  - Make the mappings listing html part a directive
- - Use [I]Frame for embedded content - X-Frame-Options make this hard, need to use a proxy...
-
 
 

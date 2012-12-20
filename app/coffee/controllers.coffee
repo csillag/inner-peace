@@ -1,8 +1,8 @@
 #Controllers
 
 class SearchController
-  this.$inject = ['$document', '$scope', '$timeout', '$http', 'domSearcher']
-  constructor: ($document, $scope, $timeout, $http, domSearcher) ->
+  this.$inject = ['$document', '$scope', '$timeout', '$http', 'domTextMatcher']
+  constructor: ($document, $scope, $timeout, $http, domTextMatcher) ->
 
     $document.find("#help1").popover(html:true)
     $document.find("#help2").popover(html:true)
@@ -11,55 +11,79 @@ class SearchController
       @paths = []
       @mappings = []
       @canSearch = false
-      @sr = null  
-      @searchResults = null
-      @detailedResults = null
+      @sr = null
 
     $scope.init = ->
-      @domSearcher = domSearcher.getInstance()
-      @compatibility = @domSearcher.testBrowserCompatibility()
-      @rootId = "rendered-dom" #this is ID of the DOM element we use for rendering the demo HTML
+      @domMatcher = domTextMatcher.getInstance()
       @sourceMode = "local"
-      @foundAction = "select"
+      @foundAction = "hilite"
+      @matchEngine = "fuzzy"
       @localSource = "This is <br /> a <i>   test    </i> <b>    text   </b>. <div>Has <div>some</div><div>divs</div>, too.</div>"
       @atomicOnly = true
       @searchPos = 0
-      @maxPatternLength = @domSearcher.getMaxPatternLength()
       @matchThreshold = 50
       @$watch 'sourceMode', (newValue, oldValue) =>
         @cleanResults()
         @renderSource = null
         switch @sourceMode
           when "local"
-            @domSearcher.setRootId @rootId
+            @domMatcher.setRootId "rendered-dom"
             @sourceModeNeedsInput = true
+            @sourceURL = null
             @searchTerm = "sex text"
             @searchPos = 0
             @matchDistance = 1000
+            @searchDistinct = true
+            @searchCaseSensitice = false
+            @render() #TODO: remove this, only for testing    
           when "page"
-            @sourceModeNeedsInput = true        
-            @domSearcher.setRealRoot()
+            @sourceModeNeedsInput = true
+            @sourceURL = null        
+            @domMatcher.setRealRoot()
             @checkPaths()
             @searchTerm = "very"
             @searchPos = 0
             @matchDistance = 1000
           when "sample1"
+            @renderSource = null
+            @sourceURL = "sample1.html"
             @sourceModeNeedsInput = false
-            $http.get("sample1.html").success (data) =>
-              @renderSource = data
-              @searchTerm = "formal truth jiggles the brain"
-              @searchPos = 1000
-              @matchDistance = 10000
-              @checkPaths()
+            @searchTerm = "formal truth jiggles the brain"
+            @searchPos = 1000
+            @matchDistance = 10000
+ 
+      window.dtm_frame_loaded = =>
+        @domMatcher.setRootIframe("dtm-demo-article-box")
+        @checkPaths()        
 
-    $scope.init()
+      # Scan the region as soon as it's specified  
+      @$watch 'selectedPath', => @scanSelectedPath()
+
+      # Execute select as the user types  
+      @$watch 'searchTerm', => @search()
+      @$watch 'matchEngine', => @search()
+      @$watch 'searchCaseSensitive', => @search()
+      @$watch 'searchDistinct', => if @matchEngine is "exact" then @search()
+      @$watch 'matchDistance', => if @matchEngine is "fuzzy" then @search()
+      @$watch 'searchPos', => if @matchEngine is "fuzzy" then @search()
+      @$watch 'matchThreshold', => if @matchEngine is "fuzzy" then @search()
+      @$watch 'foundAction', => if @singleMode then @moveMark 0 else @markAll()
+
+    $scope.scanSelectedPath = ->
+      unless @selectedPath? then return
+      @scanTime = @domMatcher.prepareSearch @selectedPath, true
+#      console.log "Scanned " + @selectedPath + " in " + @scanTime + " ms."
+      @canSearch = true
+      @search()
 
     $scope.checkPaths = ->
       # wait for the browser to render the DOM for the new HTML
       $timeout =>
-        @paths = @domSearcher.getAllPaths()
-        @selectedPath = @paths[0].path
-        @canSearch = true
+        @paths = @domMatcher.getAllPaths()
+        if @selectedPath is @paths[0].path
+          @scanSelectedPath()
+        else
+          @selectedPath = @paths[0].path
 
     $scope.render = ->
       #this function is called from a child scope, so we can't replace $scope with @ here.     
@@ -90,19 +114,48 @@ class SearchController
   """.replace /\n/g, "<br />"
 
     $scope.search = ->
-      if @sr? then @domSearcher.undoHighlight @sr
+      if @sr? then @domMatcher.undoHighlight @sr        
 
-      @sr = @domSearcher.search @selectedPath, @searchTerm, @searchPos, @matchDistance, @matchThreshold / 100
-      if @sr?
-        @searchResults = if @sr.exact then "Found exact match." else "Found this: '" + @sr.found + "'"
-        @detailedResults = @sr.nodes
-        @showDetailedResults = false
-        switch @foundAction
-          when "hilite" then @domSearcher.highlight @sr, "hl"
-          when "select" then @domSearcher.select @sr
+      if @canSearch and @searchTerm
+        switch @matchEngine
+          when "exact" then @sr = @domMatcher.searchExact @searchTerm, @searchDistinct, @searchCaseSensitive
+          when "regex" then @sr = @domMatcher.searchRegex @searchTerm, @searchCaseSensitive
+          when "fuzzy" then @sr = @domMatcher.searchFuzzy @searchTerm, @searchPos, @searchCaseSensitive, @matchDistance, @matchThreshold / 100
+          else @sr = null
+        @markAll()
       else
-        @searchResults = "Pattern not found."
-        @detailedResults = []
+        @sr = null
 
-angular.module('innerPeace.controllers', [])
+    $scope.myHL   
+
+    $scope.markAll = ->
+      unless @sr? then return
+      @singleMode = false
+      @domMatcher.undoHighlight @sr
+      switch @foundAction
+        when "hilite" then @domMatcher.highlight @sr, null
+        when "select" then @domMatcher.select @sr
+
+    $scope.moveMark = (diff) ->
+      unless @sr? then return        
+      len = @sr.matches.length
+      if @singleMode
+        i = @markIndex + diff
+        i += len while i < 0
+        i = i % len
+      else
+        i = 0
+      @markIndex = i
+      @singleMode = true
+      @domMatcher.undoHighlight @sr
+      switch @foundAction
+        when "hilite" then @domMatcher.highlight @sr, null, @markIndex
+        when "select" then @domMatcher.select @sr, @markIndex
+
+    $scope.markForward = -> @moveMark 1
+    $scope.markBackward = -> @moveMark -1
+
+    $scope.init()
+
+angular.module('domTextMatcherDemo.controllers', [])
   .controller('SearchController', SearchController)

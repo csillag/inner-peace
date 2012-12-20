@@ -1,4 +1,4 @@
 angular
-  .module( 'innerPeace', ['innerPeace.filters', 'innerPeace.services', 'innerPeace.directives', 'innerPeace.controllers'])
+  .module( 'domTextMatcherDemo', ['domTextMatcherDemo.filters', 'domTextMatcherDemo.services', 'domTextMatcherDemo.directives', 'domTextMatcherDemo.controllers'])
  
-angular.bootstrap(document,['innerPeace'])
+angular.bootstrap(document,['domTextMatcherDemo'])

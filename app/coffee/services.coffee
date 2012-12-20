@@ -1,3 +1,3 @@
 # Services
 
-angular.module 'innerPeace.services', ['domsearcher'] 
+angular.module 'domTextMatcherDemo.services', ['domTextMatcher'] 

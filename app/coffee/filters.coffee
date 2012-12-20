@@ -1,11 +1,10 @@
-
 # Filters
 
 booleanCheckmark = (input) -> if input then '\u2713' else ''#'\u2718'
 quoteHTML = (input) -> "'" + (input.replace /[ ]/g, "&nbsp;") + "'"
 
 angular
-  .module('innerPeace.filters', [])
+  .module('domTextMatcherDemo.filters', [])
   .filter('interpolate', 
     ['version', (version)->
       (text)->

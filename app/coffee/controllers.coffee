@@ -35,7 +35,7 @@ class SearchController
             @matchDistance = 1000
             @searchDistinct = true
             @searchCaseSensitice = false
-            @render() #TODO: remove this, only for testing    
+#            @render() #TODO: remove this, only for testing    
           when "page"
             @sourceModeNeedsInput = true
             @sourceURL = null        

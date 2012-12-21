@@ -51,6 +51,13 @@ class SearchController
             @searchTerm = "formal truth jiggles the brain"
             @searchPos = 1000
             @matchDistance = 10000
+          when "sample2"
+            @renderSource = null
+            @sourceURL = "sample2.html"
+            @sourceModeNeedsInput = false
+            @searchTerm = "openness and innovation"
+            @searchPos = 300000
+            @matchDistance = 300000        
  
       window.dtm_frame_loaded = =>
         @domMatcher.setRootIframe("dtm-demo-article-box")

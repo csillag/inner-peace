@@ -20,8 +20,10 @@ class window.DomTextMapper
   #
   # Call this when mapping content in an iframe.
   setRootIframe: (iframeId) ->
-    iframe = document.getElementById iframeId
+    iframe = window.document.getElementById iframeId
+    unless iframe? then throw new Error "Can't find iframe with specified ID!"
     @rootWin = iframe.contentWindow
+    unless @rootWin? then throw new Error "Can't access contents of the spefified iframe!"
     @rootNode = @rootWin.document
     @pathStartNode = @getBody()
 
@@ -36,10 +38,22 @@ class window.DomTextMapper
 
   # The available paths which can be scanned
   # 
-  # An array is returned, with each entry containing a "path" and a "length" field.
-  # The value of the "path" field is the valid path value, "length" contains information
-  # about the length of content belonging to the given path.
-  getAllPaths: -> @collectPathsForNode @pathStartNode
+  # An map is returned, where the keys are the paths, and the values are objects with the following fields:
+  #   path: the valid path value
+  #   node: reference to the DOM node
+  #   content: the text content of the node, as rendered by the browser
+  #   length: the length of the next content
+  getAllPaths: ->
+    @saveSelection()
+    @allPaths = @collectPathsForNode @pathStartNode
+    @restoreSelection()
+    @allPaths
+
+  # Return the default path
+  getDefaultPath: -> @getPathTo @pathStartNode
+
+  # Select the given path (for visual identification), and optionally scroll to it
+  selectPath: (path, scroll = false) -> @selectNode @allPaths[path].node, scroll
 
   # Scan the given part of the document.
   # 
@@ -63,21 +77,29 @@ class window.DomTextMapper
   #  corpus will contain the text content of the selected path# 
   #  scannedPath will be set to the path
   scan: (path = null, rescan = false) ->
-    if not path? then path = @getAllPaths()[0]
+    path ?= @getDefaultPath()
     if path is @scannedPath and not rescan then return
-    node = @lookUpNode path
-    @mappings = []
+#    console.log "Scanning path: " + path
+    node = @allPaths[path].node
+    @mappings = {}
+    @saveSelection()        
     @collectStrings node, path, null, 0, 0
+    @restoreSelection()
     @scannedPath = path
-    @corpus = @mappings[0].content
+    @corpus = @mappings[path].pathInfo.content
+#    console.log "Corpus is: " + @corpus
     null
+
+  getRangeForPath: (path) -> @mappings[path]
 
   # Get the matching DOM elements for a given text range
   # 
   # If the "path" argument is supplied, scan is called automatically.
   # (Except if the supplied path is the same as the last scanned path,
   # and rescan is false.)
-  getMappingsFor: (start, end, path = null, rescan = false) ->
+  getMappingsForRange: (start, end, path = null, rescan = false) ->
+    unless (start? and end?) then throw new Error "start and end is required!"    
+#    console.log "Collecting matches for [" + start + ":" + end + "]"    
     if path?
       @scan(path, rescan) 
     else
@@ -86,7 +108,7 @@ class window.DomTextMapper
 
     # Collect the matching mappings     
     matches = []
-    for mapping in @mappings when mapping.atomic and @regions_overlap mapping.start, mapping.end, start, end
+    for p, mapping of @mappings when mapping.atomic and @regions_overlap mapping.start, mapping.end, start, end
       do (mapping) =>
         match =
           element: mapping
@@ -97,44 +119,56 @@ class window.DomTextMapper
         else
          if start <= mapping.start
             match.end = end - mapping.start
-            match.wanted = mapping.content.substr 0, match.end                
+            match.wanted = mapping.pathInfo.content.substr 0, match.end                
           else if mapping.end <= end
             match.start = start - mapping.start
-            match.wanted = mapping.content.substr match.start        
+            match.wanted = mapping.pathInfo.content.substr match.start        
           else
             match.start = start - mapping.start
             match.end = end - mapping.start
-            match.wanted = mapping.content.substr match.start, match.end - match.start
+            match.wanted = mapping.pathInfo.content.substr match.start, match.end - match.start
         @computeSourcePositions match
-        match.yields = mapping.node.data.substr match.startCorrected, match.endCorrected - match.startCorrected
+        match.yields = mapping.pathInfo.node.data.substr match.startCorrected, match.endCorrected - match.startCorrected
         matches.push match
+
+    if matches.length is 0
+      throw new Error "No matches found!"
+        
 
     # Create a DOM range object
     r = @rootWin.document.createRange()
     startMatch = matches[0]
-    startNode = startMatch.element.node
-    startInfo = startMatch.element.path
+    startNode = startMatch.element.pathInfo.node
+    startPath = startMatch.element.pathInfo.path
+    startOffset = startMatch.startCorrected
     if startMatch.full
       r.setStartBefore startNode
+      startInfo = startPath
     else
-      r.setStart startNode, startMatch.startCorrected
-      startInfo += ":" + startMatch.startCorrected
+      r.setStart startNode, startOffset
+      startInfo = startPath + ":" + startOffset
 
     endMatch = matches[matches.length - 1]
-    endNode = endMatch.element.node
-    endInfo = endMatch.element.path
+    endNode = endMatch.element.pathInfo.node
+    endPath = endMatch.element.pathInfo.path
+    endOffset = endMatch.endCorrected
     if endMatch.full
       r.setEndAfter endNode
+      endInfo = endPath
     else
-      r.setEnd endNode, endMatch.endCorrected
-      endInfo += ":" + endMatch.endCorrected
+      r.setEnd endNode, endOffset
+      endInfo = endPath + ":" + endOffset
 
     result = {
       nodes: matches
       range: r
       rangeInfo:
-        start: startInfo
-        end: endInfo
+        startPath: startPath
+        startOffset: startOffset
+        startInfo: startInfo
+        endPath: endPath
+        endOffset: endOffset
+        endInfo: endInfo
     }
     result
 
@@ -164,13 +198,14 @@ class window.DomTextMapper
     xpath = xpath.replace /\/$/, ''
     xpath
 
-  collectPathsForNode: (node, results = []) ->
-    if @careAboutNodeType and node.nodeType in @ignoredNodeTypes and results.length > 0 then return
-
-    len = (@getNodeContent node).length
-    if len then results.push
-      path: @getPathTo node
-      length: len
+  collectPathsForNode: (node, results = {}) ->
+    path = @getPathTo node
+    cont = @getNodeContent node, false
+    if cont.length then results[path] =
+      path: path
+      node: node
+      content: cont
+      length: cont.length
     
     if node.hasChildNodes
       children = node.childNodes
@@ -184,28 +219,30 @@ class window.DomTextMapper
 
   regions_overlap: (start1, end1, start2, end2) -> start1 < end2 and start2 < end1
 
-  lookUpNode: (path) ->
-    doc = @rootNode.ownerDocument ? @rootNode
-    results = doc.evaluate path, @rootNode, null, 0, null
-    node = results.iterateNext()
+#  lookUpNode: (path) ->
+#    doc = @rootNode.ownerDocument ? @rootNode
+#    results = doc.evaluate path, @rootNode, null, 0, null
+#    node = results.iterateNext()
 
   # save the original selection
   saveSelection: ->
     sel = @rootWin.getSelection()        
+#    console.log "Saving selection: " + sel.rangeCount + " ranges."
     @oldRanges = (sel.getRangeAt i) for i in [0 ... sel.rangeCount]
-    @oldRanges ?= []
+    switch sel.rangeCount
+      when 0 then @oldRanges ?= []
+      when 1 then @oldRanges = [ @oldRanges ]
 
   # restore selection
   restoreSelection: ->
+#    console.log "Restoring selection: " + @oldRanges.length + " ranges."
     sel = @rootWin.getSelection()
     sel.removeAllRanges()
     sel.addRange range for range in @oldRanges
 
-  # Read the "text content" of a sub-tree of the DOM by creating a selection from it
-  getNodeSelectionText: (node, shouldRestoreSelection = true) ->
-    sel = @rootWin.getSelection()                
-
-    if shouldRestoreSelection then @saveSelection()
+  # Select the given node (for visual identification), and optionally scroll to it
+  selectNode: (node, scroll = false) ->  
+    sel = @rootWin.getSelection()
 
     # clear the selection
     sel.removeAllRanges()
@@ -215,6 +252,19 @@ class window.DomTextMapper
     range.setStartBefore node
     range.setEndAfter node
     sel.addRange range
+    if scroll
+      sn = node
+      while not sn.scrollIntoViewIfNeeded?
+        sn = sn.parentNode
+      sn.scrollIntoViewIfNeeded()
+    sel
+
+  # Read the "text content" of a sub-tree of the DOM by creating a selection from it
+  getNodeSelectionText: (node, shouldRestoreSelection = true) ->
+    if shouldRestoreSelection then @saveSelection()
+        
+    # select the node
+    sel = @selectNode node
 
     # read (and convert) the content of the selection
     text = sel.toString().trim().replace(/\n/g, " ").replace /[ ][ ]+/g, " "
@@ -225,10 +275,10 @@ class window.DomTextMapper
 
   # Convert "display" text indices to "source" text indices.
   computeSourcePositions: (match) ->
-    sourceText = match.element.node.data.replace /\n/g, " "
+    sourceText = match.element.pathInfo.node.data.replace /\n/g, " "
     # the HTML source of the text inside a text element.
 
-    displayText = match.element.content
+    displayText = match.element.pathInfo.content
     # what gets displayed, when the node is processed by the browser.
 
     displayStart = if match.start? then match.start else 0
@@ -253,11 +303,14 @@ class window.DomTextMapper
     match.endCorrected = sourceEnd
     null
 
-  getNodeContent: (node) -> @getNodeSelectionText node
+  getNodeContent: (node, shouldRestoreSelection = true) -> @getNodeSelectionText node, shouldRestoreSelection
 
   collectStrings: (node, parentPath, parentContent = null, parentIndex = 0, index = 0) ->
 #    console.log "Scanning path " + parentPath    
-    content = @getNodeContent node
+#    content = @getNodeContent node, false
+
+    pathInfo = @allPaths[parentPath]
+    content = pathInfo?.content
 
     if not content? or content is ""
       # node has no content            
@@ -273,13 +326,11 @@ class window.DomTextMapper
 
     endIndex = startIndex + content.length
     atomic = not node.hasChildNodes()
-    @mappings.push
-      "path": parentPath
-      "node": node
-      "content": content
-      "start": parentIndex + startIndex
-      "end": parentIndex + endIndex
-      "atomic" : atomic
+    @mappings[parentPath] =
+      pathInfo: pathInfo
+      start: parentIndex + startIndex
+      end: parentIndex + endIndex
+      atomic: atomic
 
     if not atomic
       children = node.childNodes

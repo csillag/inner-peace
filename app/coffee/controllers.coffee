@@ -1,20 +1,23 @@
 #Controllers
 
 class SearchController
-  this.$inject = ['$document', '$scope', '$timeout', '$http', 'domTextMatcher']
-  constructor: ($document, $scope, $timeout, $http, domTextMatcher) ->
+  this.$inject = ['$document', '$scope', '$timeout', '$http', 'domTextMatcher', 'domTextHiliter']
+  constructor: ($document, $scope, $timeout, $http, domTextMatcher, domTextHiliter) ->
 
     $document.find("#help1").popover(html:true)
     $document.find("#help2").popover(html:true)
 
     $scope.cleanResults = ->
-      @paths = []
-      @mappings = []
+      delete @paths
+      delete @mappings
+      delete @sr
+      delete @hlTask
       @canSearch = false
-      @sr = null
 
     $scope.init = ->
       @domMatcher = domTextMatcher.getInstance()
+      @hiliter = domTextHiliter
+#      @sourceMode = "sample2"
       @sourceMode = "local"
       @foundAction = "hilite"
       @matchEngine = "fuzzy"
@@ -24,12 +27,12 @@ class SearchController
       @matchThreshold = 50
       @$watch 'sourceMode', (newValue, oldValue) =>
         @cleanResults()
-        @renderSource = null
+        delete @renderSource
         switch @sourceMode
           when "local"
             @domMatcher.setRootId "rendered-dom"
             @sourceModeNeedsInput = true
-            @sourceURL = null
+            delete @sourceURL
             @searchTerm = "sex text"
             @searchPos = 0
             @matchDistance = 1000
@@ -38,21 +41,21 @@ class SearchController
 #            @render() #TODO: remove this, only for testing    
           when "page"
             @sourceModeNeedsInput = true
-            @sourceURL = null        
+            delete @sourceURL
             @domMatcher.setRealRoot()
             @checkPaths()
             @searchTerm = "very"
             @searchPos = 0
             @matchDistance = 1000
           when "sample1"
-            @renderSource = null
+            delete @renderSource
             @sourceURL = "sample1.html"
             @sourceModeNeedsInput = false
             @searchTerm = "formal truth jiggles the brain"
             @searchPos = 1000
             @matchDistance = 10000
           when "sample2"
-            @renderSource = null
+            delete @renderSource
             @sourceURL = "sample2.html"
             @sourceModeNeedsInput = false
             @searchTerm = "openness and innovation"
@@ -87,10 +90,13 @@ class SearchController
       # wait for the browser to render the DOM for the new HTML
       $timeout =>
         @paths = @domMatcher.getAllPaths()
-        if @selectedPath is @paths[0].path
+        @offeredPaths = (path for path, data of @paths)
+        defaultPath = @domMatcher.getDefaultPath()
+        
+        if @selectedPath is defaultPath
           @scanSelectedPath()
         else
-          @selectedPath = @paths[0].path
+          @selectedPath = defaultPath
 
     $scope.render = ->
       #this function is called from a child scope, so we can't replace $scope with @ here.     
@@ -121,26 +127,26 @@ class SearchController
   """.replace /\n/g, "<br />"
 
     $scope.search = ->
-      if @sr? then @domMatcher.undoHighlight @sr        
+      @hiliter.undo @hlTask          
 
       if @canSearch and @searchTerm
         switch @matchEngine
           when "exact" then @sr = @domMatcher.searchExact @searchTerm, @searchDistinct, @searchCaseSensitive
           when "regex" then @sr = @domMatcher.searchRegex @searchTerm, @searchCaseSensitive
           when "fuzzy" then @sr = @domMatcher.searchFuzzy @searchTerm, @searchPos, @searchCaseSensitive, @matchDistance, @matchThreshold / 100
-          else @sr = null
+          else delete @sr
         @markAll()
       else
-        @sr = null
+        delete @s
 
     $scope.myHL   
 
     $scope.markAll = ->
       unless @sr? then return
       @singleMode = false
-      @domMatcher.undoHighlight @sr
+      @hiliter.undo @hlTask          
       switch @foundAction
-        when "hilite" then @domMatcher.highlight @sr, null
+        when "hilite" then @hlTask = @hiliter.highlightSearchResults @sr
         when "select" then @domMatcher.select @sr
 
     $scope.moveMark = (diff) ->
@@ -154,9 +160,9 @@ class SearchController
         i = 0
       @markIndex = i
       @singleMode = true
-      @domMatcher.undoHighlight @sr
+      @hiliter.undo @hlTask
       switch @foundAction
-        when "hilite" then @domMatcher.highlight @sr, null, @markIndex
+        when "hilite" then @hlTask = @hiliter.highlightSearchResults @sr, null, @markIndex
         when "select" then @domMatcher.select @sr, @markIndex
 
     $scope.markForward = -> @moveMark 1

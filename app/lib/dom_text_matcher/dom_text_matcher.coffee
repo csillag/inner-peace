@@ -30,7 +30,11 @@ class window.DomTextMatcher
   #   node: reference to the DOM node
   #   content: the text content of the node, as rendered by the browser
   #   length: the length of the next content
-  getAllPaths: -> @mapper.getAllPaths()
+  getAllPaths: ->
+    t0 = @timestamp()
+    paths = @mapper.getAllPaths()
+    t1 = @timestamp()
+    return time: t1 - t0, paths: paths
 
   # Return the default path
   getDefaultPath: -> @mapper.getDefaultPath()

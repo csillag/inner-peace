@@ -17,8 +17,8 @@ class SearchController
     $scope.init = ->
       @domMatcher = domTextMatcher.getInstance()
       @hiliter = domTextHiliter
-#      @sourceMode = "sample2"
-      @sourceMode = "local"
+      @sourceMode = "sample2"
+#      @sourceMode = "local"
       @foundAction = "hilite"
       @matchEngine = "fuzzy"
       @localSource = "This is <br /> a <i>   test    </i> <b>    text   </b>. <div>Has <div>some</div><div>divs</div>, too.</div>"
@@ -89,7 +89,9 @@ class SearchController
     $scope.checkPaths = ->
       # wait for the browser to render the DOM for the new HTML
       $timeout =>
-        @paths = @domMatcher.getAllPaths()
+        r = @domMatcher.getAllPaths()
+        @traverseTime = r.time
+        @paths = r.paths
         @offeredPaths = (path for path, data of @paths)
         defaultPath = @domMatcher.getDefaultPath()
         

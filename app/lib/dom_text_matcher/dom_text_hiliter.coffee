@@ -11,7 +11,7 @@ class window.DomTextHiliter
     if indices?
       if typeof indices is 'number' then indices = [indices]
     else
-       indices = [0 ... len]
+      indices = [0 ... len]
     sel = window.getSelection()
     sel.removeAllRanges()
 #    (sel.addRange results.matches[index].range) for index in indices when 0 <= index < len
@@ -40,13 +40,19 @@ class window.DomTextHiliter
     hiliteTemplate ?= @standardHilite
 
     len = task.ranges.length
+#    console.log "Got " + len + " ranges."
     if indices?
       if typeof indices is 'number' then indices = [indices]
     else
+#      console.log "Got no indices to start with"
       if len
+#        console.log "Creating full indices"
         indices = [0 ... len]
       else
-         return
+#        console.log "Nothing to do"
+        return
+#    console.log "Indices are: "
+#    console.log indices
 
     # Prepare data structures for undo   
     toInsert = []
@@ -71,6 +77,14 @@ class window.DomTextHiliter
       do (path, matches) =>
 #        console.log "Doing new node."
         node = matches[0].element.pathInfo.node
+        unless node?
+          console.log "Node missing. Looking it up..."
+          node = @domMapper.lookUpNode matches[0].element.pathInfo.path
+          console.log "Found. "
+#          console.log node
+#        else
+#          console.log "Node is:"
+#          console.log node
         # Calculate a normalized set of ranges 
         ranges = @uniteRanges ({start: match.startCorrected, end: match.endCorrected, yields: match.yields } for match in matches)
         clone = node.cloneNode()
@@ -85,7 +99,7 @@ class window.DomTextHiliter
             node: clone
             before: hl
           toRemove.push hl
- #         console.log "Done full cut."
+#          console.log "Done full cut."
         else
             # Unfortunately, we need to mess around the insides of this element
             index = 0
@@ -145,24 +159,42 @@ class window.DomTextHiliter
       insert: toInsert
       remove: toRemove
 
+    @allActive.undo.insert.push toInsert...
+    @allActive.undo.remove.push toRemove...
+
+    null
+
   # Call this to undo a highlighting task
   #
   # It's your responsibility to only call this if a highlight is at place.
   # (Altought calling it more than once will do no harm.)
   # Pass in the task that was used with the highlighting.
   undo: (task) ->
-    unless task?.undo? then return
+    unless task?.undo?
+#      console.log "Nothing to undo"
+      return
+#    console.log "Undo hilite: " + task.undo.insert.length + " insertions, " + task.undo.remove.length + " deletions."
     insert.before.parentNode.insertBefore insert.node, insert.before for insert in task.undo.insert
+    task.undo.insert = []
     remove.parentNode.removeChild remove for remove in task.undo.remove
-    delete task.undo
+    task.undo.remove = []
+
+  clean: ->
+    console.log "Hilite cleanup"
+    @undo @allActive
+    console.log "Done"
   
         
   # ===== Private methods (never call from outside the module) =======
 
   constructor: (domTextMapper) ->
+    @domMapper = domTextMapper    
     hl = document.createElement "span"
     hl.setAttribute "style", "background-color: yellow; color: black; border-radius: 3px; box-shadow: 0 0 2px black;"
     @standardHilite = hl
+    @allActive = undo: 
+      insert: []
+      remove: []
 
   hilite: (node, template) ->
     parent = node.parentNode

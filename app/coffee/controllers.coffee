@@ -17,8 +17,8 @@ class SearchController
     $scope.init = ->
       @domMatcher = domTextMatcher.getInstance()
       @hiliter = domTextHiliter
-      @sourceMode = "sample2"
-#      @sourceMode = "local"
+#      @sourceMode = "sample2"
+      @sourceMode = "local"
       @foundAction = "hilite"
       @matchEngine = "fuzzy"
       @localSource = "This is <br /> a <i>   test    </i> <b>    text   </b>. <div>Has <div>some</div><div>divs</div>, too.</div>"
@@ -43,7 +43,7 @@ class SearchController
             @sourceModeNeedsInput = true
             delete @sourceURL
             @domMatcher.setRealRoot()
-            @checkPaths()
+            @dataChanged()
             @searchTerm = "very"
             @searchPos = 0
             @matchDistance = 1000
@@ -64,7 +64,7 @@ class SearchController
  
       window.dtm_frame_loaded = =>
         @domMatcher.setRootIframe("dtm-demo-article-box")
-        @checkPaths()        
+        @dataChanged()        
 
       # Scan the region as soon as it's specified  
       @$watch 'selectedPath', => @scanSelectedPath()
@@ -81,14 +81,15 @@ class SearchController
 
     $scope.scanSelectedPath = ->
       unless @selectedPath? then return
-      @scanTime = @domMatcher.prepareSearch @selectedPath, true
+      @scanTime = @domMatcher.prepareSearch @selectedPath
 #      console.log "Scanned " + @selectedPath + " in " + @scanTime + " ms."
       @canSearch = true
       @search()
 
-    $scope.checkPaths = ->
+    $scope.dataChanged = ->
       # wait for the browser to render the DOM for the new HTML
       $timeout =>
+        @domMatcher.documentChanged()
         r = @domMatcher.getAllPaths()
         @traverseTime = r.time
         @paths = r.paths
@@ -104,7 +105,7 @@ class SearchController
       #this function is called from a child scope, so we can't replace $scope with @ here.     
       $scope.renderSource = @localSource
       $scope.cleanResults()
-      $scope.checkPaths()
+      $scope.dataChanged()
 
     $scope.distanceExplanation = """
 

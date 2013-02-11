@@ -80,13 +80,17 @@ class window.DomTextHiliter
         unless node?
           console.log "Node missing. Looking it up..."
           node = @domMapper.lookUpNode matches[0].element.pathInfo.path
-          console.log "Found. "
+#          console.log "Found. "
 #          console.log node
 #        else
 #          console.log "Node is:"
 #          console.log node
+#        console.log "Matches: "
+#        console.log matches
         # Calculate a normalized set of ranges 
         ranges = @uniteRanges ({start: match.startCorrected, end: match.endCorrected, yields: match.yields } for match in matches)
+#        console.log "Ranges: "
+#        console.log ranges
         clone = node.cloneNode()
         match.element.pathInfo.node = clone for match in matches
 
@@ -108,7 +112,7 @@ class window.DomTextHiliter
             for range in ranges
               do (range) =>
                 if range.start is 0
-                  # This is the first range, and it starts at the start of the node      
+                  # This is the first range, and it starts at the start of the node
                   nextPart = nextPart.splitText range.end
                   firstPart = nextPart.previousSibling
 #                  if firstPart.data isnt range.yields
@@ -126,7 +130,7 @@ class window.DomTextHiliter
                   lastPart = nextPart.splitText range.start - index
                   nextPart = null
                   remainingPart = lastPart.previousSibling
-#                  if lastPart.data isnt range.yields
+ #                 if lastPart.data isnt range.yields
 #                    console.log "End cut. Wanted: '" + range.yields + "'; got: '" + lastPart.data + "'."
 #                  else
 #                    console.log "Done end cut."
@@ -138,8 +142,10 @@ class window.DomTextHiliter
                   toRemove.push hl
                 else
                   # this range is is at the middle of the node
+#                  console.log "Gonna split @ " + range.start + "-" + index + " = " + (range.start - index) + " (len is: " + nextPart.data.length + ")"
                   middlePart = nextPart.splitText range.start - index
                   beforePart = middlePart.previousSibling
+#                  console.log "Gonna split @ " + range.end + "-" + range.start + "=" + (range.end - range.start) + " (len is: " + middlePart.data.length + ")"
                   nextPart = middlePart.splitText range.end - range.start
 #                  if middlePart.data isnt range.yields
 #                    console.log "Middle cut. Wanted: '" + range.yields + "'; got: '" + middlePart.data + "'."
@@ -223,9 +229,13 @@ class window.DomTextHiliter
   uniteRanges: (ranges) ->
     united = []
     delete lastRange
+#    console.log "Uniting ranges: "
+#    console.log ranges
     for range in ranges.sort @compareRanges
-      do (range) =>
+#        console.log "Doing range: "
+#        console.log range
         if lastRange? and lastRange.end >= range.start
+#          console.log "Can unite..."
           # there was a previous range, and we can continue it
           if range.end > lastRange.end
 #            console.log "Old yields: '" + lastRange.yields + "'."
@@ -236,10 +246,13 @@ class window.DomTextHiliter
             lastRange.end = range.end
 #            console.log "Should have appended the yield value, too: '" + lastRange.yields + "'."
         else
+#          console.log "New unit. (Last ended @ " + lastRange?.end + "; new start @ " + range.start + ")"
           # no previous range, or it's too far off
           united.push lastRange =
             start: range.start
             end: range.end
             yields: range.yields
+#    console.log "As united:"
+#    console.log united
     united
 

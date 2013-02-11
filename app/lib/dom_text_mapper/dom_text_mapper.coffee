@@ -52,7 +52,7 @@ class window.DomTextMapper
   # will not assume any stability.
   documentChanged: ->
     @lastDOMChange = @timestamp()
-    console.log "Registered document change."
+#    console.log "Registered document change."
 
   # The available paths which can be scanned
   #
@@ -65,14 +65,16 @@ class window.DomTextMapper
 #    console.log "in getAllPaths"
     if @domStableSince @lastCollectedPaths
       # We have a valid paths structure!
-#      console.log "We have a valid cache."
+#      console.log "We have a valid DOM structure cache."
       return if @restricted then @cleanPaths else @allPaths
 
-    console.log "No valid cache, will have to calculate getAllPaths."
+#    console.log "No valid cache, will have to calculate getAllPaths."
+    startTime = @timestamp()
     @saveSelection()
     @allPaths = @collectPathsForNode @pathStartNode
     @restoreSelection()
     @lastCollectedPaths = @timestamp()
+#    console.log "Path traversal took " + (@lastCollectedPaths - startTime) + " ms."
     if @restricted
       @cleanPaths = {}
       for path, info of @allPaths
@@ -114,7 +116,7 @@ class window.DomTextMapper
     if path is @scannedPath and @domStableSince @lastScanned
 #      console.log "We have a valid cache. Returning instead of scanning."
       return
-    console.log "Scanning path: " + path
+#    console.log "Scanning path: " + path
     @getAllPaths()
     node = @allPaths[path].node
     @mappings = {}
@@ -170,6 +172,7 @@ class window.DomTextMapper
   # (Except if the supplied path is the same as the last scanned path.)
   getMappingsForRange: (start, end, path = null) ->
 #    console.log "Collecting matches for [" + start + ":" + end + "]"
+
     unless (start? and end?) then throw new Error "start and end is required!"    
 
     if path? then @scan path
@@ -208,28 +211,44 @@ class window.DomTextMapper
         
 
     # Create a DOM range object
+#    console.log "Building range..."
     r = @rootWin.document.createRange()
     startMatch = matches[0]
+#    console.log "StartMatch is: "
+#    console.log startMatch
     startNode = startMatch.element.pathInfo.node
     startPath = startMatch.element.pathInfo.path
     startOffset = startMatch.startCorrected
     if startMatch.full
+#      console.log "Calling range.setStartBefore <" + startPath + ">..."
+#      console.log startNode
       r.setStartBefore startNode
       startInfo = startPath
     else
+#      console.log "Calling range.setStart <" + startPath + ">, " + startOffset + "..."
+#      console.log startNode
       r.setStart startNode, startOffset
       startInfo = startPath + ":" + startOffset
 
     endMatch = matches[matches.length - 1]
+#    console.log "endMatch is: "
+#    console.log endMatch
     endNode = endMatch.element.pathInfo.node
     endPath = endMatch.element.pathInfo.path
     endOffset = endMatch.endCorrected
     if endMatch.full
+#      console.log "Calling range.setEndAfter <" + endPath + ">..."
+#      console.log endNode
       r.setEndAfter endNode
       endInfo = endPath
     else
+#      console.log "Calling range.setEnd <" + endPath + ">, " + endOffset + "..."
+#      console.log endNode
       r.setEnd endNode, endOffset
       endInfo = endPath + ":" + endOffset
+
+#    console.log "Has built range: "
+#    console.log r
 
     result = {
       nodes: matches
@@ -250,15 +269,7 @@ class window.DomTextMapper
   timestamp: -> new Date().getTime()
 
   domChangedSince: (timestamp) ->
-#    console.log "Has the DOM changed since " + timestamp + "?"
     if @lastDOMChange? and timestamp? then @lastDOMChange > timestamp else true
-#    if @lastDOMChange? and timestamp?
-#      console.log "We have a timestamp, checking..."
-#      result = @lastDOMChange > timestamp
-#      console.log result
-#    else
-#      console.log "We don't have a timestamp (or a reference), assuming it has changed."
-#      true        
 
   domStableSince: (timestamp) -> not @domChangedSince timestamp
 

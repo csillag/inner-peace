@@ -204,10 +204,7 @@ class window.DomTextHiliter
 
   hilite: (node, template) ->
     parent = node.parentNode
-    unless parent?
-      console.log "Warning: hilited node has no parent!"
-      console.log node
-      return
+    unless parent? then throw new Error "Hilited node has no parent!"
     hl = template.cloneNode()
     hl.appendChild node.cloneNode()
     node.parentNode.insertBefore hl, node

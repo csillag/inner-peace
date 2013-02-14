@@ -71,10 +71,11 @@ class window.DomTextMapper
 #    console.log "No valid cache, will have to calculate getAllPaths."
     startTime = @timestamp()
     @saveSelection()
-    @allPaths = @collectPathsForNode @pathStartNode
+    @allPaths = {}
+    @collectPathsForNode @pathStartNode
     @restoreSelection()
     @lastCollectedPaths = @timestamp()
-#    console.log "Path traversal took " + (@lastCollectedPaths - startTime) + " ms."
+    console.log "Path traversal took " + (@lastCollectedPaths - startTime) + " ms."
     if @restricted
       @cleanPaths = {}
       for path, info of @allPaths
@@ -129,6 +130,59 @@ class window.DomTextMapper
 #    console.log "Corpus is: " + @corpus
     null
 
+  performUpdateOnNode: (node, escalating = false) ->
+    unless node? then throw new Error "Called performUpdate with a null node!"
+    startTime = @timestamp()
+    unless escalating then @saveSelection()
+    path = @getPathTo node
+    pathInfo = @allPaths[path]
+#    if escalating then console.log "(Escalated)"
+#    console.log "Updating data about " + path + ": "
+    if pathInfo.node is node and pathInfo.content is @getNodeContent node
+#      console.log "Good, the node and the overall content is still the same"
+#      console.log "Dropping obsolete path info and mappings for children..."
+      prefix = path + "/"
+      pathsToDrop =p
+
+      # FIXME: There must be a more elegant way to do this. 
+      pathsToDrop = []
+      for p, data of @allPaths when @stringStartsWith p, prefix
+        pathsToDrop.push p
+      for p in pathsToDrop
+        delete @mappings[p]
+        delete @allPaths[p]        
+        
+#      console.log "Done. Collecting new path info..."
+      @collectPathsForNode node
+
+#      console.log "Done. Updating mappings..."
+      parentPath = @parentPath path
+      parentPathInfo = @allPaths[parentPath]
+      parentMappings = @mappings[parentPath]
+      oldIndex = @mappings[path].start - parentMappings.start
+
+      @collectStrings node, path, parentPathInfo.content, parentMappings.start, oldIndex
+#      console.log "Data update took " + (@timestamp() - startTime) + " ms."
+
+    else
+#      console.log "Uh-oh, the node has been replaced, or the overall content has changed!"
+      if pathInfo.node isnt @pathStartNode
+#        console.log "I guess I must go up one level."
+        parentNode = if node.parentNode?
+#          console.log "Node has parent, using that."
+          node.parentNode
+        else
+          parentPath = @parentPath path
+#          console.log "Node has no parent, will look up " + parentPath
+          @lookUpNode parentPath
+        @performUpdateOnNode parentNode, true
+      else
+        console.log "I can not go up, since I'm already at path start node. Barking out."
+        throw new Error "Can not keep up with the changes, since even the node configured as path start node was replaced."
+    unless escalating then @restoreSelection()        
+
+
+  # Return the character range mappings for a given path in the DOM
   getRangeForPath: (path) ->
     result = @mappings[path]
     if @restricted
@@ -207,7 +261,12 @@ class window.DomTextMapper
         matches.push match
 
     if matches.length is 0
+#      console.log "Wanted: [" + start + ":" + end + "], found: "
+#      f = ((start: mapping.start, end: mapping.end) for p, mapping of @mappings when mapping.atomic)
+#      console.log f
+#      console.log "[" + mapping.start + ":" + mapping.end + "]" for p, mapping of @mappings when mapping.atomic
       throw new Error "No matches found!"
+
         
 
     # Create a DOM range object
@@ -260,6 +319,7 @@ class window.DomTextMapper
         endPath: endPath
         endOffset: endOffset
         endInfo: endInfo
+      safeParent: r.commonAncestorContainer
     }
 #    console.log "Done collecting"
     result
@@ -267,6 +327,10 @@ class window.DomTextMapper
   # ===== Private methods (never call from outside the module) =======
 
   timestamp: -> new Date().getTime()
+
+  stringStartsWith: (string, prefix) -> prefix is string.substr 0, prefix.length
+
+  parentPath: (path) -> path.substr 0, path.lastIndexOf "/"
 
   domChangedSince: (timestamp) ->
     if @lastDOMChange? and timestamp? then @lastDOMChange > timestamp else true
@@ -297,10 +361,10 @@ class window.DomTextMapper
     xpath = xpath.replace /\/$/, ''
     xpath
 
-  collectPathsForNode: (node, results = {}) ->
+  collectPathsForNode: (node) ->
     path = @getPathTo node
     cont = @getNodeContent node, false
-    if cont.length then results[path] =
+    if cont.length then @allPaths[path] =
       path: path
       content: cont
       length: cont.length
@@ -310,9 +374,9 @@ class window.DomTextMapper
       children = node.childNodes
       i = 0
       while i < children.length
-        @collectPathsForNode children[i], results
+        @collectPathsForNode children[i]
         i++
-    results
+    null
 
   getBody: -> (@rootWin.document.getElementsByTagName "body")[0]
 
@@ -410,13 +474,31 @@ class window.DomTextMapper
  #   console.log "computeSourcePosition done. Corrected range is: " + match.startCorrected + "-" + match.endCorrected
     null
 
+  # Internal function used to read out the text content of a given node, as render by the browser.
+  # The current implementation uses the browser selection API to do so.
   getNodeContent: (node, shouldRestoreSelection = true) -> @getNodeSelectionText node, shouldRestoreSelection
 
-  collectStrings: (node, parentPath, parentContent = null, parentIndex = 0, index = 0) ->
-#    console.log "Scanning path " + parentPath    
+  # Internal function to collect mapping data from a given DOM element.
+  # 
+  # Input parameters:
+  #    node: the node to scan
+  #    path: the path to the node (relative to rootNode
+  #    parentContent: the content of the node's parent node (as rendered by the browser)
+  #           This is used to determine whether the given node is rendered at all.
+  #           If not given, it will be assumed that it is rendered
+  #    parentIndex: the starting character offset
+  #           of content of this node's parent node in the rendered content
+  #    index: ths first character offset position in the content of this node's parent node
+  #           where the content of this node might start
+  #
+  # Returns:
+  #    the first character offset position in the content of this node's parent node
+  #    that is not accounted for by this node
+  collectStrings: (node, path, parentContent = null, parentIndex = 0, index = 0) ->
+#    console.log "Scanning path " + path    
 #    content = @getNodeContent node, false
 
-    pathInfo = @allPaths[parentPath]
+    pathInfo = @allPaths[path]
     content = pathInfo?.content
 
     if not content? or content is ""
@@ -426,18 +508,21 @@ class window.DomTextMapper
         
     startIndex = if parentContent? then (parentContent.indexOf content, index) else index
     if startIndex is -1
-       # content of node is not present in parant's content - probably hidden, or something similar
+       # content of node is not present in parent's content - probably hidden, or something similar
 #       console.log "Content is not present in parent, returning"
        return index
 
 
     endIndex = startIndex + content.length
     atomic = not node.hasChildNodes()
-    @mappings[parentPath] =
+    @mappings[path] =
       pathInfo: pathInfo
       start: parentIndex + startIndex
       end: parentIndex + endIndex
       atomic: atomic
+
+    if @declareMappings
+      console.log "Found mappings for [" + @mappings[path].start + ":" + @mappings[path].end + "]: " + pathInfo.content
 
     if not atomic
       children = node.childNodes
@@ -450,7 +535,7 @@ class window.DomTextMapper
         oldCount = typeCount[nodeName]
         newCount = if oldCount? then oldCount + 1 else 1
         typeCount[nodeName] = newCount
-        childPath = parentPath + "/" + nodeName + (if newCount > 1 then "[" + newCount + "]" else "")
+        childPath = path + "/" + nodeName + (if newCount > 1 then "[" + newCount + "]" else "")
         pos=@collectStrings child, childPath, content, parentIndex + startIndex, pos
         i++
 

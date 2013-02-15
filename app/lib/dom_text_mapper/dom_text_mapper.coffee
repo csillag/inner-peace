@@ -136,6 +136,8 @@ class window.DomTextMapper
     unless escalating then @saveSelection()
     path = @getPathTo node
     pathInfo = @allPaths[path]
+    unless pathInfo? then throw new Error "Can not find path info for path " + path
+    unless @mappings[path]? then throw new error "Can not find mappings for path " + path
 #    if escalating then console.log "(Escalated)"
 #    console.log "Updating data about " + path + ": "
     if pathInfo.node is node and pathInfo.content is @getNodeContent node
@@ -225,15 +227,14 @@ class window.DomTextMapper
   # If the "path" argument is supplied, scan is called automatically.
   # (Except if the supplied path is the same as the last scanned path.)
   getMappingsForRange: (start, end, path = null) ->
-#    console.log "Collecting matches for [" + start + ":" + end + "]"
-
     unless (start? and end?) then throw new Error "start and end is required!"    
-
+#    console.log "Collecting matches for [" + start + ":" + end + "]"
     if path? then @scan path
 
     unless @scannedPath? then throw new Error "Can not run getMappingsFor() without existing mappings. Either supply a path to scan, or call scan() beforehand!"
 
-    # Collect the matching mappings     
+    # Collect the matching mappings
+#    console.log "Collecting mappings"
     matches = []
     for p, mapping of @mappings when mapping.atomic and @regions_overlap mapping.start, mapping.end, start, end
       do (mapping) =>
@@ -256,9 +257,11 @@ class window.DomTextMapper
             match.start = start - mapping.start
             match.end = end - mapping.start
             match.wanted = mapping.pathInfo.content.substr match.start, match.end - match.start
+        
         @computeSourcePositions match
         match.yields = mapping.pathInfo.node.data.substr match.startCorrected, match.endCorrected - match.startCorrected
         matches.push match
+#        console.log "Done with " + mapping.pathInfo.path
 
     if matches.length is 0
 #      console.log "Wanted: [" + start + ":" + end + "], found: "
@@ -268,7 +271,6 @@ class window.DomTextMapper
       throw new Error "No matches found!"
 
         
-
     # Create a DOM range object
 #    console.log "Building range..."
     r = @rootWin.document.createRange()
@@ -361,20 +363,38 @@ class window.DomTextMapper
     xpath = xpath.replace /\/$/, ''
     xpath
 
-  collectPathsForNode: (node) ->
+  collectPathsForNode: (node, visible = true) ->
     path = @getPathTo node
+#    if @stringStartsWith path, "/HTML/BODY/DIV/TABLE/TBODY/TR/TD[2]/DIV/DIV/TABLE"
+#      console.log "Collecting " + path
+
+    # Step one: get rendered node content, and store path info
     cont = @getNodeContent node, false
-    if cont.length then @allPaths[path] =
-      path: path
-      content: cont
-      length: cont.length
-      node : node
-    
+    if cont.length
+      if node.data? and node.data.replace(/\n/g, " ").trim().length is 0
+        console.log "Encountered FAKE selection for path:" + path + ". Ignoring this."
+        visible = false
+      else        
+        @allPaths[path] =
+          path: path
+          content: cont
+          length: cont.length
+          node : node
+#        if @stringStartsWith path, "/HTML/BODY/DIV/TABLE/TBODY/TR/TD[2]/DIV/DIV/TABLE"
+        unless visible then console.log path + ": collected info; visible = " + visible
+    else
+#      if @stringStartsWith path, "/HTML/BODY/DIV/TABLE/TBODY/TR/TD[2]/DIV/DIV/TABLE"
+#        console.log path + ": no real content"
+#        visible = false
+
+    # Step two: cover all children.
+    # Q: should we check children even if the goven node had no rendered content?
+    # I seem to remember that the answer is yes, but I don't remember why.
     if node.hasChildNodes
       children = node.childNodes
       i = 0
       while i < children.length
-        @collectPathsForNode children[i]
+        @collectPathsForNode children[i], visible
         i++
     null
 
@@ -471,7 +491,7 @@ class window.DomTextMapper
       sourceIndex++
     match.startCorrected = sourceStart
     match.endCorrected = sourceEnd
- #   console.log "computeSourcePosition done. Corrected range is: " + match.startCorrected + "-" + match.endCorrected
+#    console.log "computeSourcePosition done. Corrected range is: " + match.startCorrected + "-" + match.endCorrected
     null
 
   # Internal function used to read out the text content of a given node, as render by the browser.

@@ -1,4 +1,7 @@
 class window.DomTextMapper
+
+  USE_TH_TBODY_WORKAROUND = true
+
   constructor: ->
     @setRealRoot()
     @restrictToSerializable false
@@ -187,6 +190,7 @@ class window.DomTextMapper
   # Return the character range mappings for a given path in the DOM
   getRangeForPath: (path) ->
     result = @mappings[path]
+    unless result? then throw new Error "Found no range for path '" + path + "'!"
     if @restricted
       result = $.extend {}, result;
       result.pathInfo = $.extend {}, result.pathInfo
@@ -268,7 +272,7 @@ class window.DomTextMapper
 #      f = ((start: mapping.start, end: mapping.end) for p, mapping of @mappings when mapping.atomic)
 #      console.log f
 #      console.log "[" + mapping.start + ":" + mapping.end + "]" for p, mapping of @mappings when mapping.atomic
-      throw new Error "No matches found!"
+      throw new Error "No matches found for [" + start + ":" + end + "]!"
 
         
     # Create a DOM range object
@@ -328,6 +332,47 @@ class window.DomTextMapper
 
   # ===== Private methods (never call from outside the module) =======
 
+  # There is some weird, bogus behaviour in Chrome,
+  # triggered by whitespaces between the table tag and it's children.
+  # See the select-tbody-problem described here:
+  #    https://github.com/hypothesis/h/issues/280
+  # And the WebKit bug report here:
+  #    https://bugs.webkit.org/show_bug.cgi?id=110595
+  # 
+  # To work around this, we have to do two things.
+  # 
+  # 1. We remove all the text elements created from those whitespaces.
+  # (Text elements are not allowed to be children of the table tag, anyway.)
+  # That fixes the problem with selecting the whole table, when trying te select
+  #  an empty text element.
+  #
+  # The second part of the trick is implemented in the selectNode method.
+ 
+  purgeDebris: ->
+    @debris = []
+    @collectDebris @pathStartNode
+    console.log "Dropping " + @debris.length + " debris elements."
+    for node in @debris
+#      console.log "Dropping debris text element: " + @getPathTo node
+      node.remove()
+
+  # Go through this sub-tree, and collect all immadiate tech children of the tables
+  collectDebris: (node) ->
+    # If this node has no children, don't bother
+    unless node.hasChildNodes() then return
+
+    # Check if this is a table
+    inTable = node.nodeType is Node.ELEMENT_NODE and node.tagName.toLowerCase() is "table"
+
+    # Go through all the children
+    for child in node.childNodes
+      if inTable and child.nodeType is Node.TEXT_NODE
+        # Found a text that should be dropped
+        @debris.push child
+      else
+        # Do this to the child, recursively
+        @collectDebris child
+
   timestamp: -> new Date().getTime()
 
   stringStartsWith: (string, prefix) -> prefix is string.substr 0, prefix.length
@@ -363,39 +408,24 @@ class window.DomTextMapper
     xpath = xpath.replace /\/$/, ''
     xpath
 
-  collectPathsForNode: (node, visible = true) ->
-    path = @getPathTo node
-#    if @stringStartsWith path, "/HTML/BODY/DIV/TABLE/TBODY/TR/TD[2]/DIV/DIV/TABLE"
-#      console.log "Collecting " + path
-
-    # Step one: get rendered node content, and store path info
+  # This method is called recursively, to collect all the paths in a given sub-tree of the DOM.
+  collectPathsForNode: (node) ->
+    # Step one: get rendered node content, and store path info, if there is valuable content
     cont = @getNodeContent node, false
     if cont.length
-      if node.data? and node.data.replace(/\n/g, " ").trim().length is 0
-        console.log "Encountered FAKE selection for path:" + path + ". Ignoring this."
-        visible = false
-      else        
-        @allPaths[path] =
-          path: path
-          content: cont
-          length: cont.length
-          node : node
-#        if @stringStartsWith path, "/HTML/BODY/DIV/TABLE/TBODY/TR/TD[2]/DIV/DIV/TABLE"
-        unless visible then console.log path + ": collected info; visible = " + visible
-    else
-#      if @stringStartsWith path, "/HTML/BODY/DIV/TABLE/TBODY/TR/TD[2]/DIV/DIV/TABLE"
-#        console.log path + ": no real content"
-#        visible = false
+      path = @getPathTo node        
+      @allPaths[path] =
+        path: path
+        content: cont
+        length: cont.length
+        node : node
 
     # Step two: cover all children.
     # Q: should we check children even if the goven node had no rendered content?
     # I seem to remember that the answer is yes, but I don't remember why.
-    if node.hasChildNodes
-      children = node.childNodes
-      i = 0
-      while i < children.length
-        @collectPathsForNode children[i], visible
-        i++
+    if node.hasChildNodes()
+      for child in node.childNodes
+        @collectPathsForNode child        
     null
 
   getBody: -> (@rootWin.document.getElementsByTagName "body")[0]
@@ -432,8 +462,22 @@ class window.DomTextMapper
 
     # create our range, and select it
     range = @rootWin.document.createRange()
-    range.setStartBefore node
-    range.setEndAfter node
+
+    # work-around 2 for table selection inconsistency issue,
+    # See https://github.com/hypothesis/h/issues/280
+    if USE_TH_TBODY_WORKAROUND and node.nodeType is Node.ELEMENT_NODE and
+        node.tagName.toLowerCase() in ["thead", "tbody"] and node.hasChildNodes()
+      # This is a thead or a tbody, and selection those is problematic,
+      # because if the WebKit bug.
+      # (Sometimes it selects nothing, sometimes it selects the whole table.)
+      # So we select directly the children instead.
+      children = node.childNodes
+      range.setStartBefore children[0]
+      range.setEndAfter children[children.length - 1]
+    else
+      range.setStartBefore node
+      range.setEndAfter node
+
     sel.addRange range
     if scroll
       sn = node
@@ -445,8 +489,7 @@ class window.DomTextMapper
   # Read the "text content" of a sub-tree of the DOM by creating a selection from it
   getNodeSelectionText: (node, shouldRestoreSelection = true) ->
     if shouldRestoreSelection then @saveSelection()
-        
-    # select the node
+
     sel = @selectNode node
 
     # read (and convert) the content of the selection
@@ -529,7 +572,7 @@ class window.DomTextMapper
     startIndex = if parentContent? then (parentContent.indexOf content, index) else index
     if startIndex is -1
        # content of node is not present in parent's content - probably hidden, or something similar
-#       console.log "Content is not present in parent, returning"
+#       console.log "Content of this not is not present in content of parent, at path " + path
        return index
 
 

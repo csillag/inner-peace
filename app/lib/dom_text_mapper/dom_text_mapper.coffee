@@ -255,7 +255,7 @@ class window.DomTextMapper
     prefixLen = start - prefixStart
     prefix = content.substr prefixStart, prefixLen
     suffix = content.substr end, prefixLen
-    [prefix, suffix]
+    [prefix.trim(), suffix.trim()]
         
 
   # Get the matching DOM elements for a given text range

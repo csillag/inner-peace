@@ -1,6 +1,8 @@
 class window.DomTextMapper
 
-  USE_TH_TBODY_WORKAROUND = true
+  USE_THEAD_TBODY_WORKAROUND = true
+  USE_TABLE_TEXT_WORKAROUND = true
+  CONTEXT_LEN = 32
 
   constructor: ->
     @setRealRoot()
@@ -161,12 +163,21 @@ class window.DomTextMapper
       @collectPathsForNode node
 
 #      console.log "Done. Updating mappings..."
-      parentPath = @parentPath path
-      parentPathInfo = @allPaths[parentPath]
-      parentMappings = @mappings[parentPath]
-      oldIndex = @mappings[path].start - parentMappings.start
 
-      @collectStrings node, path, parentPathInfo.content, parentMappings.start, oldIndex
+      if pathInfo.node is @pathStartNode
+        console.log "Ended up rescanning the whole doc."
+        @collectStrings node, path, null, 0, 0
+      else
+        parentPath = @parentPath path
+        parentPathInfo = @allPaths[parentPath]
+        unless parentPathInfo?
+          throw new Error "While performing update on node " + path + ", no path info found for parent path: " + parentPath
+        parentMappings = @mappings[parentPath]
+        unless parentMappings?
+          throw new Error "While performing update on node " + path + ", no mappings info found for parent path: " + parentPath
+        oldIndex = @mappings[path].start - parentMappings.start
+        @collectStrings node, path, parentPathInfo.content, parentMappings.start, oldIndex
+        
 #      console.log "Data update took " + (@timestamp() - startTime) + " ms."
 
     else
@@ -225,6 +236,27 @@ class window.DomTextMapper
 #      console.log mappings
 
     mappings
+
+  getContentForPath: (path = null) -> 
+    path ?= @getDefaultPath()       
+    @allPaths[path].content
+
+  getLengthForPath: (path = null) ->
+    path ?= @getDefaultPath()
+    @allPaths[path].length
+
+  getContentForRange: (start, end, path = null) ->
+    @getContentForPath(path).substr start, end - start
+
+  # Get the context that encompasses the given text range
+  getContextForRange: (start, end) ->
+    content = @getContentForPath()
+    prefixStart = Math.max 0, start - CONTEXT_LEN
+    prefixLen = start - prefixStart
+    prefix = content.substr prefixStart, prefixLen
+    suffix = content.substr end, prefixLen
+    [prefix, suffix]
+        
 
   # Get the matching DOM elements for a given text range
   # 
@@ -332,47 +364,6 @@ class window.DomTextMapper
 
   # ===== Private methods (never call from outside the module) =======
 
-  # There is some weird, bogus behaviour in Chrome,
-  # triggered by whitespaces between the table tag and it's children.
-  # See the select-tbody-problem described here:
-  #    https://github.com/hypothesis/h/issues/280
-  # And the WebKit bug report here:
-  #    https://bugs.webkit.org/show_bug.cgi?id=110595
-  # 
-  # To work around this, we have to do two things.
-  # 
-  # 1. We remove all the text elements created from those whitespaces.
-  # (Text elements are not allowed to be children of the table tag, anyway.)
-  # That fixes the problem with selecting the whole table, when trying te select
-  #  an empty text element.
-  #
-  # The second part of the trick is implemented in the selectNode method.
- 
-  purgeDebris: ->
-    @debris = []
-    @collectDebris @pathStartNode
-    console.log "Dropping " + @debris.length + " debris elements."
-    for node in @debris
-#      console.log "Dropping debris text element: " + @getPathTo node
-      node.remove()
-
-  # Go through this sub-tree, and collect all immadiate tech children of the tables
-  collectDebris: (node) ->
-    # If this node has no children, don't bother
-    unless node.hasChildNodes() then return
-
-    # Check if this is a table
-    inTable = node.nodeType is Node.ELEMENT_NODE and node.tagName.toLowerCase() is "table"
-
-    # Go through all the children
-    for child in node.childNodes
-      if inTable and child.nodeType is Node.TEXT_NODE
-        # Found a text that should be dropped
-        @debris.push child
-      else
-        # Do this to the child, recursively
-        @collectDebris child
-
   timestamp: -> new Date().getTime()
 
   stringStartsWith: (string, prefix) -> prefix is string.substr 0, prefix.length
@@ -463,9 +454,18 @@ class window.DomTextMapper
     # create our range, and select it
     range = @rootWin.document.createRange()
 
-    # work-around 2 for table selection inconsistency issue,
-    # See https://github.com/hypothesis/h/issues/280
-    if USE_TH_TBODY_WORKAROUND and node.nodeType is Node.ELEMENT_NODE and
+    # There is some weird, bogus behaviour in Chrome,
+    # triggered by whitespaces between the table tag and it's children.
+    # See the select-tbody and the select-the-parent-when-selecting problems
+    # described here:
+    #    https://github.com/hypothesis/h/issues/280
+    # And the WebKit bug report here:
+    #    https://bugs.webkit.org/show_bug.cgi?id=110595
+    # 
+    # To work around this, when told to select specific nodes, we have to
+    # do various other things. See bellow.
+
+    if USE_THEAD_TBODY_WORKAROUND and node.nodeType is Node.ELEMENT_NODE and
         node.tagName.toLowerCase() in ["thead", "tbody"] and node.hasChildNodes()
       # This is a thead or a tbody, and selection those is problematic,
       # because if the WebKit bug.
@@ -474,11 +474,19 @@ class window.DomTextMapper
       children = node.childNodes
       range.setStartBefore children[0]
       range.setEndAfter children[children.length - 1]
+      sel.addRange range
     else
-      range.setStartBefore node
-      range.setEndAfter node
+      if USE_TABLE_TEXT_WORKAROUND and node.nodeType is Node.TEXT_NODE and node.parentNode.tagName.toLowerCase() is "table"
+        # This is a text element that should not even be here.
+        # Selecting it might select the whole table,
+        # so we don't select anything
 
-    sel.addRange range
+      else
+        range.setStartBefore node
+        range.setEndAfter node
+        sel.addRange range
+
+
     if scroll
       sn = node
       while not sn.scrollIntoViewIfNeeded?

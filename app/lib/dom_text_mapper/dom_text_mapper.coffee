@@ -82,63 +82,61 @@ class window.DomTextMapper
     if @domStableSince @lastScanned
       # We have a valid paths structure!
 #      console.log "We have a valid DOM structure cache."
-      return @allpaths
+      return @path
 
-#    console.log "No valid cache, will have to calculate getAllPaths."
+#    console.log "No valid cache, will have to do a scan."
     startTime = @timestamp()
     @saveSelection()
-    @allPaths = {}
+    @path = {}
     @collectPathsForNode @pathStartNode
     t1 = @timestamp()
     console.log "Path traversal took " + (t1 - startTime) + " ms."
 
     path = @getPathTo @pathStartNode
-    node = @allPaths[path].node
-    @mappings = {}
+    node = @path[path].node
     @collectStrings node, path, null, 0, 0
     @restoreSelection()
     @lastScanned = @timestamp()
-    @corpus = @mappings[path].pathInfo.content
+    @corpus = @path[path].content
 #    console.log "Corpus is: " + @corpus
 
     t2 = @timestamp()    
     console.log "Phase II of data collecting " + (t2 - t1) + " ms."
 
-    @allPaths
+    @path
  
   # Select the given path (for visual identification), and optionally scroll to it
   selectPath: (path, scroll = false) ->
-    info = @allPaths[path]
+    info = @path[path]
     @selectNode info.node ? @lookUpNode info.path
 
   performUpdateOnNode: (node, escalating = false) ->
     unless node? then throw new Error "Called performUpdate with a null node!"
-    unless @allPaths? then return #We don't have data yet. Not updating.
+    unless @path? then return #We don't have data yet. Not updating.
     startTime = @timestamp()
     unless escalating then @saveSelection()
     path = @getPathTo node
-    pathInfo = @allPaths[path]
+    pathInfo = @path[path]
     unless pathInfo?
       @performUpdateOnNode node.parentNode, true
       unless escalating then @restoreSelection()        
       return
 #    console.log "Performing update on node @ path " + path
-    unless @mappings[path]? then throw new error "Can not find mappings for path " + path
+
 #    if escalating then console.log "(Escalated)"
 #    console.log "Updating data about " + path + ": "
     if pathInfo.node is node and pathInfo.content is @getNodeContent node, false
 #      console.log "Good, the node and the overall content is still the same"
-#      console.log "Dropping obsolete path info and mappings for children..."
+#      console.log "Dropping obsolete path info for children..."
       prefix = path + "/"
       pathsToDrop =p
 
       # FIXME: There must be a more elegant way to do this. 
       pathsToDrop = []
-      for p, data of @allPaths when @stringStartsWith p, prefix
+      for p, data of @path when @stringStartsWith p, prefix
         pathsToDrop.push p
       for p in pathsToDrop
-        delete @mappings[p]
-        delete @allPaths[p]        
+        delete @path[p]        
         
 #      console.log "Done. Collecting new path info..."
       @collectPathsForNode node
@@ -150,14 +148,11 @@ class window.DomTextMapper
         @collectStrings node, path, null, 0, 0
       else
         parentPath = @parentPath path
-        parentPathInfo = @allPaths[parentPath]
+        parentPathInfo = @path[parentPath]
         unless parentPathInfo?
           throw new Error "While performing update on node " + path + ", no path info found for parent path: " + parentPath
-        parentMappings = @mappings[parentPath]
-        unless parentMappings?
-          throw new Error "While performing update on node " + path + ", no mappings info found for parent path: " + parentPath
-        oldIndex = @mappings[path].start - parentMappings.start
-        @collectStrings node, path, parentPathInfo.content, parentMappings.start, oldIndex
+        oldIndex = @path[path].start - parentPathInfo.start
+        @collectStrings node, path, parentPathInfo.content, parentPathInfo.start, oldIndex
         
 #      console.log "Data update took " + (@timestamp() - startTime) + " ms."
 
@@ -178,38 +173,35 @@ class window.DomTextMapper
         throw new Error "Can not keep up with the changes, since even the node configured as path start node was replaced."
     unless escalating then @restoreSelection()        
 
-
-  # Return the character range mappings for a given path in the DOM
-  getRangeForPath: (path) ->
-    result = @mappings[path]
-    unless result? then throw new Error "Found no range for path '" + path + "'!"
+  # Return info for a given path in the DOM
+  getInfoForPath: (path) ->
+    result = @path[path]
+    unless result? then throw new Error "Found no info for path '" + path + "'!"
     result
 
-  # Return the character range mappings for a given node in the DOM
-  getMappingsForNode: (node) -> @getRangeForPath @getPathTo node
+  # Return info for a given node in the DOM
+  getInfogsForNode: (node) -> @getInfoForPath @getPathTo node
 
   # Get the matching DOM elements for a given set of text ranges
   # (Calles getMappingsForRange for each element in the givenl ist)
   getMappingsForRanges: (ranges) ->
 #    console.log "Ranges:"
 #    console.log ranges
-    mappings = (for range in ranges
+    (for range in ranges
       mapping = @getMappingsForRange range.start, range.end
     )
-
-    mappings
 
   # Return the rendered value of a part of the dom.
   # If path is not given, the default path is used.
   getContentForPath: (path = null) -> 
     path ?= @getDefaultPath()       
-    @allPaths[path].content
+    @path[path].content
 
   # Return the length of the rendered value of a part of the dom.
   # If path is not given, the default path is used.
   getLengthForPath: (path = null) ->
     path ?= @getDefaultPath()
-    @allPaths[path].length
+    @path[path].length
 
   # Return a given range of the rendered value of a part of the dom.
   # If path is not given, the default path is used.
@@ -238,9 +230,9 @@ class window.DomTextMapper
     # Collect the matching mappings
 #    console.log "Collecting mappings"
     matches = []
-    for p, mapping of @mappings when mapping.atomic and @regions_overlap mapping.start, mapping.end, start, end
+    for p, mapping of @path when mapping.atomic and @regions_overlap mapping.start, mapping.end, start, end
       do (mapping) =>
-#        console.log "Checking " + mapping.pathInfo.path
+#        console.log "Checking " + mapping.path
 #        console.log mapping
         match =
           element: mapping
@@ -251,19 +243,19 @@ class window.DomTextMapper
         else
          if start <= mapping.start
             match.end = end - mapping.start
-            match.wanted = mapping.pathInfo.content.substr 0, match.end                
+            match.wanted = mapping.content.substr 0, match.end                
           else if mapping.end <= end
             match.start = start - mapping.start
-            match.wanted = mapping.pathInfo.content.substr match.start        
+            match.wanted = mapping.content.substr match.start        
           else
             match.start = start - mapping.start
             match.end = end - mapping.start
-            match.wanted = mapping.pathInfo.content.substr match.start, match.end - match.start
+            match.wanted = mapping.content.substr match.start, match.end - match.start
         
         @computeSourcePositions match
-        match.yields = mapping.pathInfo.node.data.substr match.startCorrected, match.endCorrected - match.startCorrected
+        match.yields = mapping.node.data.substr match.startCorrected, match.endCorrected - match.startCorrected
         matches.push match
-#        console.log "Done with " + mapping.pathInfo.path
+#        console.log "Done with " + mapping.path
 
     if matches.length is 0
 #      console.log "Wanted: [" + start + ":" + end + "], found: "
@@ -279,8 +271,8 @@ class window.DomTextMapper
     startMatch = matches[0]
 #    console.log "StartMatch is: "
 #    console.log startMatch
-    startNode = startMatch.element.pathInfo.node
-    startPath = startMatch.element.pathInfo.path
+    startNode = startMatch.element.node
+    startPath = startMatch.element.path
     startOffset = startMatch.startCorrected
     if startMatch.full
 #      console.log "Calling range.setStartBefore <" + startPath + ">..."
@@ -296,8 +288,8 @@ class window.DomTextMapper
     endMatch = matches[matches.length - 1]
 #    console.log "endMatch is: "
 #    console.log endMatch
-    endNode = endMatch.element.pathInfo.node
-    endPath = endMatch.element.pathInfo.path
+    endNode = endMatch.element.node
+    endPath = endMatch.element.path
     endOffset = endMatch.endCorrected
     if endMatch.full
 #      console.log "Calling range.setEndAfter <" + endPath + ">..."
@@ -371,7 +363,7 @@ class window.DomTextMapper
     cont = @getNodeContent node, false
     if cont.length
       path = @getPathTo node        
-      @allPaths[path] =
+      @path[path] =
         path: path
         content: cont
         length: cont.length
@@ -489,15 +481,15 @@ class window.DomTextMapper
   # Convert "display" text indices to "source" text indices.
   computeSourcePositions: (match) ->
 #    console.log "In computeSourcePosition"
-#    console.log match.element.pathInfo.path
-#    console.log match.element.pathInfo.node.data
+#    console.log match.element.path
+#    console.log match.element.node.data
 
     # the HTML source of the text inside a text element.
-    sourceText = match.element.pathInfo.node.data.replace /\n/g, " "
+    sourceText = match.element.node.data.replace /\n/g, " "
 #    console.log "sourceText is '" + sourceText + "'"
 
     # what gets displayed, when the node is processed by the browser.
-    displayText = match.element.pathInfo.content
+    displayText = match.element.content
 #    console.log "displayText is '" + displayText + "'"
 
     # The selected range in displayText.
@@ -548,7 +540,7 @@ class window.DomTextMapper
 #    console.log "Scanning path " + path    
 #    content = @getNodeContent node, false
 
-    pathInfo = @allPaths[path]
+    pathInfo = @path[path]
     content = pathInfo?.content
 
     if not content? or content is ""
@@ -565,14 +557,9 @@ class window.DomTextMapper
 
     endIndex = startIndex + content.length
     atomic = not node.hasChildNodes()
-    @mappings[path] =
-      pathInfo: pathInfo
-      start: parentIndex + startIndex
-      end: parentIndex + endIndex
-      atomic: atomic
-
-    if @declareMappings
-      console.log "Found mappings for [" + @mappings[path].start + ":" + @mappings[path].end + "]: " + pathInfo.content
+    pathInfo.start = parentIndex + startIndex
+    pathInfo.end = parentIndex + endIndex
+    pathInfo.atomic = atomic
 
     if not atomic
       children = node.childNodes

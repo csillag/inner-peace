@@ -68,7 +68,7 @@ class window.DomTextHiliter
 #          console.log "Highlighting match #" + index
           for match in task.ranges[index].nodes
             do (match) =>
-              path = match.element.pathInfo.path
+              path = match.element.path
               hilitePaths[path] ?= []
               hilitePaths[path].push match
  
@@ -76,10 +76,10 @@ class window.DomTextHiliter
     for path, matches of hilitePaths
       do (path, matches) =>
 #        console.log "Doing new node."
-        node = matches[0].element.pathInfo.node
+        node = matches[0].element.node
         unless node?
           console.log "Node missing. Looking it up..."
-          node = @domMapper.lookUpNode matches[0].element.pathInfo.path
+          node = @domMapper.lookUpNode matches[0].element.path
 #          console.log "Found. "
 #          console.log node
 #        else
@@ -92,7 +92,7 @@ class window.DomTextHiliter
 #        console.log "Ranges: "
 #        console.log ranges
         clone = node.cloneNode()
-        match.element.pathInfo.node = clone for match in matches
+        match.element.node = clone for match in matches
 
         len = node.data.length
         full = ranges.length is 1 and ranges[0].start is 0 and ranges[0].end is len

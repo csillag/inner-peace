@@ -2,12 +2,6 @@ class window.DomTextMatcher
 
   # ===== Public methods =======
 
-  # Switch the library into "serializable-only" mode.
-  # If set to true, all public API calls will be restricted to return
-  # strictly serializable data structures.
-  # (References to DOM objects will be omitted.)
-  restrictToSerializable: (value = true) -> @mapper.restrictToSerializable value
-
   # Consider only the sub-tree beginning with the given node.
   # 
   # This will be the root node to use for all operations.

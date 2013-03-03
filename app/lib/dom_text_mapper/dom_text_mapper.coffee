@@ -4,9 +4,20 @@ class window.DomTextMapper
   USE_TABLE_TEXT_WORKAROUND = true
   CONTEXT_LEN = 32
 
+  @instances: []
+
+  @changed: (node, reason = "no reason") ->
+    if @instances.length is 0 then return
+#    dm = @instances[0]
+#    console.log "Node @ " + (dm.getPathTo node) + " has changed: '" + reason + "'."
+    for instance in @instances
+      instance.performUpdateOnNode node
+    null
+
   constructor: ->
     @setRealRoot()
     @restrictToSerializable false
+    window.DomTextMapper.instances.push this
 
   # ===== Public methods =======
 
@@ -137,15 +148,20 @@ class window.DomTextMapper
 
   performUpdateOnNode: (node, escalating = false) ->
     unless node? then throw new Error "Called performUpdate with a null node!"
+    unless @allPaths? then return #We don't have data yet. Not updating.
     startTime = @timestamp()
     unless escalating then @saveSelection()
     path = @getPathTo node
     pathInfo = @allPaths[path]
-    unless pathInfo? then throw new Error "Can not find path info for path " + path
+    unless pathInfo?
+      @performUpdateOnNode node.parentNode, true
+      unless escalating then @restoreSelection()        
+      return
+#    console.log "Performing update on node @ path " + path
     unless @mappings[path]? then throw new error "Can not find mappings for path " + path
 #    if escalating then console.log "(Escalated)"
 #    console.log "Updating data about " + path + ": "
-    if pathInfo.node is node and pathInfo.content is @getNodeContent node
+    if pathInfo.node is node and pathInfo.content is @getNodeContent node, false
 #      console.log "Good, the node and the overall content is still the same"
 #      console.log "Dropping obsolete path info and mappings for children..."
       prefix = path + "/"
@@ -208,6 +224,9 @@ class window.DomTextMapper
       delete result.pathInfo.node
     result
 
+  # Return the character range mappings for a given node in the DOM
+  getMappingsForNode: (node) -> @getRangeForPath @getPathTo node
+
   # Get the matching DOM elements for a given set of text ranges
   # (Calles getMappingsForRange for each element in the givenl ist)
   getMappingsForRanges: (ranges, path = null) ->
@@ -237,18 +256,25 @@ class window.DomTextMapper
 
     mappings
 
+  # Return the rendered value of a part of the dom.
+  # If path is not given, the default path is used.
   getContentForPath: (path = null) -> 
     path ?= @getDefaultPath()       
     @allPaths[path].content
 
+  # Return the length of the rendered value of a part of the dom.
+  # If path is not given, the default path is used.
   getLengthForPath: (path = null) ->
     path ?= @getDefaultPath()
     @allPaths[path].length
 
+  # Return a given range of the rendered value of a part of the dom.
+  # If path is not given, the default path is used.
   getContentForRange: (start, end, path = null) ->
     @getContentForPath(path).substr start, end - start
 
   # Get the context that encompasses the given text range
+  # in the rendered text of the document
   getContextForRange: (start, end) ->
     content = @getContentForPath()
     prefixStart = Math.max 0, start - CONTEXT_LEN
@@ -257,7 +283,6 @@ class window.DomTextMapper
     suffix = content.substr end, prefixLen
     [prefix.trim(), suffix.trim()]
         
-
   # Get the matching DOM elements for a given text range
   # 
   # If the "path" argument is supplied, scan is called automatically.
@@ -430,19 +455,29 @@ class window.DomTextMapper
 
   # save the original selection
   saveSelection: ->
+    if @oldRanges?
+      console.log "Selection saved at:"
+      console.log @selectionSaved
+      throw new Error "Selection already saved!"
     sel = @rootWin.getSelection()        
 #    console.log "Saving selection: " + sel.rangeCount + " ranges."
     @oldRanges = (sel.getRangeAt i) for i in [0 ... sel.rangeCount]
     switch sel.rangeCount
       when 0 then @oldRanges ?= []
       when 1 then @oldRanges = [ @oldRanges ]
+    try
+      throw new Error "Selection was saved here"
+    catch exception
+      @selectionSaved = exception.stack
 
   # restore selection
   restoreSelection: ->
 #    console.log "Restoring selection: " + @oldRanges.length + " ranges."
+    unless @oldRanges? then throw new Error "No selection to restore."
     sel = @rootWin.getSelection()
     sel.removeAllRanges()
     sel.addRange range for range in @oldRanges
+    delete @oldRanges
 
   # Select the given node (for visual identification), and optionally scroll to it
   selectNode: (node, scroll = false) ->  
@@ -494,14 +529,17 @@ class window.DomTextMapper
       sn.scrollIntoViewIfNeeded()
     sel
 
+  # Read and convert the text of the current selection.
+  readSelectionText: (sel) ->
+    sel or= @rootWin.getSelection()
+    sel.toString().trim().replace(/\n/g, " ").replace /[ ][ ]+/g, " "
+
   # Read the "text content" of a sub-tree of the DOM by creating a selection from it
   getNodeSelectionText: (node, shouldRestoreSelection = true) ->
     if shouldRestoreSelection then @saveSelection()
 
     sel = @selectNode node
-
-    # read (and convert) the content of the selection
-    text = sel.toString().trim().replace(/\n/g, " ").replace /[ ][ ]+/g, " "
+    text = @readSelectionText sel
 
     if shouldRestoreSelection then @restoreSelection()
     text

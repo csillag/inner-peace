@@ -50,6 +50,9 @@ class window.DomTextMapper
     @rootNode = @rootWin.document
     @pathStartNode = @getBody()
 
+  # Return the default path
+  getDefaultPath: -> @getPathTo @pathStartNode
+
   # Work with the whole DOM tree
   # 
   # (This is the default; you only need to call this, if you have configured
@@ -70,16 +73,21 @@ class window.DomTextMapper
     @lastDOMChange = @timestamp()
 #    console.log "Registered document change."
 
-  # The available paths which can be scanned
+  # Scan the document
   #
-  # An map is returned, where the keys are the paths, and the values are objects with the following fields:
+  # Traverses the DOM, collects various information, and
+  # creates mappings between the string indices
+  # (as appearing in the rendered text) and the DOM elements.  
+  # 
+  # An map is returned, where the keys are the paths, and the
+  # values are objects with info about those parts of the DOM.
   #   path: the valid path value
   #   node: reference to the DOM node
   #   content: the text content of the node, as rendered by the browser
   #   length: the length of the next content
-  getAllPaths: ->
+  scan: ->
 #    console.log "in getAllPaths"
-    if @domStableSince @lastCollectedPaths
+    if @domStableSince @lastScanned
       # We have a valid paths structure!
 #      console.log "We have a valid DOM structure cache."
       return if @restricted then @cleanPaths else @allPaths
@@ -89,9 +97,21 @@ class window.DomTextMapper
     @saveSelection()
     @allPaths = {}
     @collectPathsForNode @pathStartNode
+    t1 = @timestamp()
+    console.log "Path traversal took " + (t1 - startTime) + " ms."
+
+    path = @getPathTo @pathStartNode
+    node = @allPaths[path].node
+    @mappings = {}
+    @collectStrings node, path, null, 0, 0
     @restoreSelection()
-    @lastCollectedPaths = @timestamp()
-    console.log "Path traversal took " + (@lastCollectedPaths - startTime) + " ms."
+    @lastScanned = @timestamp()
+    @corpus = @mappings[path].pathInfo.content
+#    console.log "Corpus is: " + @corpus
+
+    t2 = @timestamp()    
+    console.log "Phase II of data collecting " + (t2 - t1) + " ms."
+
     if @restricted
       @cleanPaths = {}
       for path, info of @allPaths
@@ -101,50 +121,11 @@ class window.DomTextMapper
       @cleanPaths
     else
       @allPaths
-
-  # Return the default path
-  getDefaultPath: -> @getPathTo @pathStartNode
-
+ 
   # Select the given path (for visual identification), and optionally scroll to it
   selectPath: (path, scroll = false) ->
     info = @allPaths[path]
     @selectNode info.node ? @lookUpNode info.path
-
-  # Scan the given part of the document.
-  # 
-  # Creates  a list of mappings between the string indices
-  # (as appearing in the displayed text) and the DOM elements.
-  #
-  # The "path" paremater specifies the sub-tree inside the DOM that should be scanned.
-  # Must be an XPath expression, relative to the configured root node.
-  # You can check for valid input values using the getAllPaths method above.
-  #
-  # If no path is given, the whole sub-tree is scanned,
-  # starting with the configured root node.
-  #
-  # Nothing is returned; the following properties are populated:
-  #
-  #  mappings will contain the created mappings
-  #  corpus will contain the text content of the selected path# 
-  #  scannedPath will be set to the path
-  scan: (path = null) ->
-#    console.log "In scan"
-    path ?= @getDefaultPath()
-    if path is @scannedPath and @domStableSince @lastScanned
-#      console.log "We have a valid cache. Returning instead of scanning."
-      return
-#    console.log "Scanning path: " + path
-    @getAllPaths()
-    node = @allPaths[path].node
-    @mappings = {}
-    @saveSelection()        
-    @collectStrings node, path, null, 0, 0
-    @restoreSelection()
-    @scannedPath = path
-    @lastScanned = @timestamp()
-    @corpus = @mappings[path].pathInfo.content
-#    console.log "Corpus is: " + @corpus
-    null
 
   performUpdateOnNode: (node, escalating = false) ->
     unless node? then throw new Error "Called performUpdate with a null node!"
@@ -229,11 +210,11 @@ class window.DomTextMapper
 
   # Get the matching DOM elements for a given set of text ranges
   # (Calles getMappingsForRange for each element in the givenl ist)
-  getMappingsForRanges: (ranges, path = null) ->
+  getMappingsForRanges: (ranges) ->
 #    console.log "Ranges:"
 #    console.log ranges
     mappings = (for range in ranges
-      mapping = @getMappingsForRange range.start, range.end, path
+      mapping = @getMappingsForRange range.start, range.end
     )
 #    console.log "Raw mappings:"
 #    console.log mappings
@@ -275,8 +256,8 @@ class window.DomTextMapper
 
   # Get the context that encompasses the given text range
   # in the rendered text of the document
-  getContextForRange: (start, end) ->
-    content = @getContentForPath()
+  getContextForRange: (start, end, path = null) ->
+    content = @getContentForPath path
     prefixStart = Math.max 0, start - CONTEXT_LEN
     prefixLen = start - prefixStart
     prefix = content.substr prefixStart, prefixLen
@@ -287,12 +268,10 @@ class window.DomTextMapper
   # 
   # If the "path" argument is supplied, scan is called automatically.
   # (Except if the supplied path is the same as the last scanned path.)
-  getMappingsForRange: (start, end, path = null) ->
+  getMappingsForRange: (start, end) ->
     unless (start? and end?) then throw new Error "start and end is required!"    
 #    console.log "Collecting matches for [" + start + ":" + end + "]"
-    if path? then @scan path
-
-    unless @scannedPath? then throw new Error "Can not run getMappingsFor() without existing mappings. Either supply a path to scan, or call scan() beforehand!"
+    @scan()
 
     # Collect the matching mappings
 #    console.log "Collecting mappings"

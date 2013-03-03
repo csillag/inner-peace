@@ -8,7 +8,6 @@ class SearchController
     $document.find("#help2").popover(html:true)
 
     $scope.cleanResults = ->
-      delete @paths
       delete @mappings
       delete @sr
       delete @hlTask
@@ -66,9 +65,6 @@ class SearchController
         @domMatcher.setRootIframe("dtm-demo-article-box")
         @dataChanged()        
 
-      # Scan the region as soon as it's specified  
-      @$watch 'selectedPath', => @scanSelectedPath()
-
       # Execute select as the user types  
       @$watch 'searchTerm', => @search()
       @$watch 'matchEngine', => @search()
@@ -79,27 +75,14 @@ class SearchController
       @$watch 'matchThreshold', => if @matchEngine is "fuzzy" then @search()
       @$watch 'foundAction', => if @singleMode then @moveMark 0 else @markAll()
 
-    $scope.scanSelectedPath = ->
-      unless @selectedPath? then return
-      @scanTime = @domMatcher.prepareSearch @selectedPath
-#      console.log "Scanned " + @selectedPath + " in " + @scanTime + " ms."
-      @canSearch = true
-      @search()
-
     $scope.dataChanged = ->
       # wait for the browser to render the DOM for the new HTML
       $timeout =>
         @domMatcher.documentChanged()
-        r = @domMatcher.getAllPaths()
+        r = @domMatcher.scan()
         @traverseTime = r.time
-        @paths = r.paths
-        @offeredPaths = (path for path, data of @paths)
-        defaultPath = @domMatcher.getDefaultPath()
-        
-        if @selectedPath is defaultPath
-          @scanSelectedPath()
-        else
-          @selectedPath = defaultPath
+        @canSearch = true
+        @search()        
 
     $scope.render = ->
       #this function is called from a child scope, so we can't replace $scope with @ here.     

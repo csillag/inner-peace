@@ -16,16 +16,9 @@ class window.DomTextMapper
 
   constructor: ->
     @setRealRoot()
-    @restrictToSerializable false
     window.DomTextMapper.instances.push this
 
   # ===== Public methods =======
-
-  # Switch the library into "serializable-only" mode.
-  # If set to true, all public API calls will be restricted to return
-  # strictly serializable data structures.
-  # (References to DOM objects will be omitted.)
-  restrictToSerializable: (value = true) -> @restricted = value
 
   # Consider only the sub-tree beginning with the given node.
   # 
@@ -86,11 +79,10 @@ class window.DomTextMapper
   #   content: the text content of the node, as rendered by the browser
   #   length: the length of the next content
   scan: ->
-#    console.log "in getAllPaths"
     if @domStableSince @lastScanned
       # We have a valid paths structure!
 #      console.log "We have a valid DOM structure cache."
-      return if @restricted then @cleanPaths else @allPaths
+      return @allpaths
 
 #    console.log "No valid cache, will have to calculate getAllPaths."
     startTime = @timestamp()
@@ -112,15 +104,7 @@ class window.DomTextMapper
     t2 = @timestamp()    
     console.log "Phase II of data collecting " + (t2 - t1) + " ms."
 
-    if @restricted
-      @cleanPaths = {}
-      for path, info of @allPaths
-        cleanInfo = $.extend({}, info);
-        delete cleanInfo.node
-        @cleanPaths[path] = cleanInfo
-      @cleanPaths
-    else
-      @allPaths
+    @allPaths
  
   # Select the given path (for visual identification), and optionally scroll to it
   selectPath: (path, scroll = false) ->
@@ -199,10 +183,6 @@ class window.DomTextMapper
   getRangeForPath: (path) ->
     result = @mappings[path]
     unless result? then throw new Error "Found no range for path '" + path + "'!"
-    if @restricted
-      result = $.extend {}, result;
-      result.pathInfo = $.extend {}, result.pathInfo
-      delete result.pathInfo.node
     result
 
   # Return the character range mappings for a given node in the DOM
@@ -216,24 +196,6 @@ class window.DomTextMapper
     mappings = (for range in ranges
       mapping = @getMappingsForRange range.start, range.end
     )
-#    console.log "Raw mappings:"
-#    console.log mappings
-
-    if @restricted
-      mappings = (for mapping in mappings
-        cleanMapping = $.extend {}, mapping
-        delete cleanMapping.range
-        cleanMapping.nodes = (for node in cleanMapping.nodes
-          cleanNode = $.extend {}, node
-          cleanNode.element = $.extend {}, cleanNode.element
-          cleanNode.element.pathInfo = $.extend {}, cleanNode.element.pathInfo
-          delete cleanNode.element.pathInfo.node
-          cleanNode
-        )
-        cleanMapping
-      )
-#      console.log "Cleaned mappings:"
-#      console.log mappings
 
     mappings
 

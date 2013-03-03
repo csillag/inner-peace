@@ -176,12 +176,13 @@ class window.DomTextMapper
 
   # Return info for a given path in the DOM
   getInfoForPath: (path) ->
+    unless @path? then throw new Error "Can't get info before running a scan() !"     
     result = @path[path]
     unless result? then throw new Error "Found no info for path '" + path + "'!"
     result
 
   # Return info for a given node in the DOM
-  getInfogsForNode: (node) -> @getInfoForPath @getPathTo node
+  getInfoForNode: (node) -> @getInfoForPath @getPathTo node
 
   # Get the matching DOM elements for a given set of text ranges
   # (Calles getMappingsForRange for each element in the givenl ist)

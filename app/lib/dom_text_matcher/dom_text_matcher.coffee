@@ -147,7 +147,7 @@ class window.DomTextMatcher
 
     # Do some preparation, if required
     t0 = @timestamp()# 
-    if path? then @prepareSearch path
+    if path? then @scan()
     t1 = @timestamp()
 
     # Check preparations    

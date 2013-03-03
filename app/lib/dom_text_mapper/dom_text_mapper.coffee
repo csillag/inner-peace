@@ -108,8 +108,9 @@ class window.DomTextMapper
   # Select the given path (for visual identification), and optionally scroll to it
   selectPath: (path, scroll = false) ->
     info = @path[path]
-    @selectNode info.node ? @lookUpNode info.path
-
+    node = info.node ? @lookUpNode info.path
+    @selectNode node, scroll
+ 
   performUpdateOnNode: (node, escalating = false) ->
     unless node? then throw new Error "Called performUpdate with a null node!"
     unless @path? then return #We don't have data yet. Not updating.

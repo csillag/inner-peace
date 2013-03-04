@@ -212,7 +212,8 @@ class window.DomTextMapper
   # Return a given range of the rendered value of a part of the dom.
   # If path is not given, the default path is used.
   getContentForRange: (start, end, path = null) ->
-    @getContentForPath(path).substr start, end - start
+    text = @getContentForPath(path).substr start, end - start
+    text.trim()
 
   # Get the context that encompasses the given text range
   # in the rendered text of the document
@@ -364,19 +365,22 @@ class window.DomTextMapper
     xpath
 
   # This method is called recursively, to collect all the paths in a given sub-tree of the DOM.
-  collectPathsForNode: (node, invisible = false) ->
+  collectPathsForNode: (node, invisible = false, verbose = false) ->
     # Step one: get rendered node content, and store path info, if there is valuable content
+    path = @getPathTo node
     cont = @getNodeContent node, false
+    @path[path] =
+      path: path
+      content: cont
+      length: cont.length
+      node : node
     if cont.length
-      path = @getPathTo node        
-      @path[path] =
-        path: path
-        content: cont
-        length: cont.length
-        node : node
+      if verbose then console.log "Collected info about path " + path
       if invisible
         console.log "Something seems to be wrong. I see visible content @ " + path + ", while some of the ancestor nodes reported empty contents. Probably a new selection API bug...."
+        
     else
+      if verbose then console.log "Found no content at path " + path
       invisible = true
 
     # Step two: cover all children.
@@ -384,7 +388,7 @@ class window.DomTextMapper
     # A: I seem to remember that the answer is yes, but I don't remember why.
     if node.hasChildNodes()
       for child in node.childNodes
-        @collectPathsForNode child, invisible
+        @collectPathsForNode child, invisible, verbose
     null
 
   getBody: -> (@rootWin.document.getElementsByTagName "body")[0]
@@ -555,8 +559,10 @@ class window.DomTextMapper
     content = pathInfo?.content
 
     if not content? or content is ""
-      # node has no content            
-#      console.log "No content, returning"
+      # node has no content
+      pathInfo.start = parentIndex + index
+      pathInfo.end = parentIndex + index
+      pathInfo.atomic = true
       return index
         
     startIndex = if parentContent? then (parentContent.indexOf content, index) else index

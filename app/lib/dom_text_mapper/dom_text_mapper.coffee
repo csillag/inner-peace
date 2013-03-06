@@ -514,6 +514,12 @@ class window.DomTextMapper
     displayEnd = if match.end? then match.end else displayText.length
 #    console.log "Display range is: " + displayStart + "-" + displayEnd
 
+    if displayEnd is 0
+      # Handle empty text nodes  
+      match.startCorrected = 0
+      match.endCorrected = 0
+      return
+
     sourceIndex = 0
     displayIndex = 0
 

@@ -125,8 +125,6 @@ class SearchController
       else
         delete @s
 
-    $scope.myHL   
-
     $scope.markAll = ->
       unless @sr? then return
       @singleMode = false

@@ -193,7 +193,7 @@
 		      </tr>
 		    </thead>
 		    <tbody>
-		      <tr ng-repeat="match in match.nodes">
+		      <tr ng-repeat="match in match.mappings">
 			<td>{{match.element.path}}</td>
 			<td>{{match.full | booleanCheckmark}}</td>
  <!--			<td>'{{match.element.content}}'</td> -->
@@ -208,7 +208,7 @@
 		    </tbody>
 		  </table>
 		  <h5>DOM range:</h5>
-		  [{{match.rangeInfo.start}} - {{match.rangeInfo.end}}]
+		  [{{match.rangeInfo.startInfo}} - {{match.rangeInfo.endInfo}}]
 		</div>
 	      </li>
 	    </ol>

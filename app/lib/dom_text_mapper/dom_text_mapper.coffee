@@ -254,6 +254,7 @@ class window.DomTextMapper
         if full
           mapping.full = true
           mapping.wanted = info.content
+          mapping.yields = info.content
           mapping.startCorrected = 0
           mapping.endCorrected = 0
         else
@@ -506,7 +507,7 @@ class window.DomTextMapper
   # Read and convert the text of the current selection.
   readSelectionText: (sel) ->
     sel or= @rootWin.getSelection()
-    sel.toString().trim().replace(/\n/g, " ").replace /[ ][ ]+/g, " "
+    sel.toString().trim().replace(/\n/g, " ").replace /\s{2,}/g, " "
 
   # Read the "text content" of a sub-tree of the DOM by creating a selection from it
   getNodeSelectionText: (node, shouldRestoreSelection = true) ->

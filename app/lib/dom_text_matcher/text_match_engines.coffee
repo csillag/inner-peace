@@ -102,7 +102,8 @@ class window.DTM_DMPMatcher
   #
   # If no match is found, the function returns null.
   search: (text, pattern, expectedStartLoc = 0, options = {}) ->
-#    console.log "In dtm search. text: '" + text + "', pattern: '" + pattern + "', expectedStartLoc: " + expectedStartLoc
+#    console.log "In dtm search. text: '" + text + "', pattern: '" + pattern + "', expectedStartLoc: " + expectedStartLoc + ", options:"
+#    console.log options
     if expectedStartLoc < 0 then throw new Error "Can't search at negative indices!"
 
     unless @caseSensitive
@@ -117,12 +118,12 @@ class window.DTM_DMPMatcher
     else
       startSlice = pattern.substr 0, maxLen
       startPos = @searchForSlice text, startSlice, expectedStartLoc
-      if startPos.length
+      if startPos?
         startLen = startPos.end - startPos.start
         endSlice = pattern.substr pLen - maxLen, maxLen
         endLoc = startPos.start + pLen - maxLen
         endPos = @searchForSlice text, endSlice, endLoc
-        if endPos.length
+        if endPos?
           endLen = endPos.end - endPos.start
           matchLen = endPos.end - startPos.start
           startIndex = startPos.start
@@ -165,7 +166,7 @@ class window.DTM_DMPMatcher
 
     r1 = @dmp.match_main text, slice, expectedStartLoc
     startIndex = r1.index
-    if startIndex is -1 then return []
+    if startIndex is -1 then return null
         
     txet = @_reverse text
     nrettap = @_reverse slice

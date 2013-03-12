@@ -160,7 +160,7 @@
 		at [{{match.start}}:{{match.end}}]
 		{{match.data}}
 		<p>Diff:
-		  <strong class="diff-shower" ng-bind-html-unsafe="match.hiddenData.diff"></strong>
+		  <strong class="diff-shower" ng-bind-html-unsafe="match.diffHTML"></strong>
 		</p>
 
 		<button class="btn btn-mini" ng-click="match.showDetails = true" ng-show="!match.showDetails">

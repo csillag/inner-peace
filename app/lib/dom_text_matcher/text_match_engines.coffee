@@ -101,7 +101,7 @@ class window.DTM_DMPMatcher
   # potential match.
   #
   # If no match is found, the function returns null.
-  search: (text, pattern, expectedStartLoc = 0) ->
+  search: (text, pattern, expectedStartLoc = 0, options = {}) ->
 #    console.log "In dtm search. text: '" + text + "', pattern: '" + pattern + "', expectedStartLoc: " + expectedStartLoc
     if expectedStartLoc < 0 then throw new Error "Can't search at negative indices!"
 
@@ -109,43 +109,34 @@ class window.DTM_DMPMatcher
       text = text.toLowerCase()
       pattern = pattern.toLowerCase()
 
-    results = []
     pLen = pattern.length
     maxLen = @getMaxPatternLength()
 
     if pLen <= maxLen
-      results = @searchForSlice text, pattern, expectedStartLoc
+      result = @searchForSlice text, pattern, expectedStartLoc
     else
       startSlice = pattern.substr 0, maxLen
       startPos = @searchForSlice text, startSlice, expectedStartLoc
       if startPos.length
-        startLen = startPos[0].end - startPos[0].start
+        startLen = startPos.end - startPos.start
         endSlice = pattern.substr pLen - maxLen, maxLen
-        endLoc = startPos[0].start + pLen - maxLen
+        endLoc = startPos.start + pLen - maxLen
         endPos = @searchForSlice text, endSlice, endLoc
         if endPos.length
-          endLen = endPos[0].end - endPos[0].start
-          matchLen = endPos[0].end - startPos[0].start
-          startIndex = startPos[0].start
-          endIndex = endPos[0].end
+          endLen = endPos.end - endPos.start
+          matchLen = endPos.end - startPos.start
+          startIndex = startPos.start
+          endIndex = endPos.end
         
-          found = text.substr startIndex, endIndex - startIndex
-          diff = @dmp.diff_main pattern, found
-          lev = @dmp.diff_levenshtein diff
-          @dmp.diff_cleanupSemantic diff
-
-          if pLen*0.5 <= matchLen <= pLen*1.5 then results.push {
+          if pLen*0.5 <= matchLen <= pLen*1.5
+            result =
               start: startIndex
-              end: endPos[0].end
-              data: 
-#                startError: startPos[0].data.error
-#                endError: endPos[0].data.error
+              end: endPos.end
+#              data: 
+#                startError: startPos.data.error
+#                endError: endPos.data.error
 #                uncheckedMidSection: Math.max 0, matchLen - startLen - endLen
 #                lengthError: matchLen - pLen
-                levenshtein: lev
-              hiddenData:
-                diff: @dmp.diff_prettyHtml diff
-          }
 #          else
 #            console.log "Sorry, matchLen (" + matchLen + ") is not between " + 0.5*pLen + " and " + 1.5*pLen
 #        else
@@ -153,7 +144,18 @@ class window.DTM_DMPMatcher
 #      else
 #        console.log "startSlice ('" + startSlice + "') not found"
 
-    results
+    unless result? then return []
+
+    if options.withLevenhstein or options.withDiff
+      found = text.substr result.start, result.end - result.start
+      result.diff = @dmp.diff_main pattern, found
+      if options.withLevenshstein
+        result.lev = @dmp.diff_levenshtein result.diff
+      if options.withDiff
+        @dmp.diff_cleanupSemantic result.diff
+        result.diffHTML = @dmp.diff_prettyHtml result.diff
+
+    [result]
 
   # ============= Private part ==========================================
   # You don't need to call the functions below this point manually
@@ -173,17 +175,6 @@ class window.DTM_DMPMatcher
     dneIndex = r2.index
     endIndex = text.length - dneIndex
 
-    found = text.substr startIndex, endIndex - startIndex
-    diff = @dmp.diff_main slice, found
-    lev = @dmp.diff_levenshtein diff
-    @dmp.diff_cleanupSemantic diff
-
-    result = [
+    result =
       start: startIndex
       end: endIndex
-      data:
- #       error: (Math.round 10000 * r1.error) / 100
-        levenshtein: lev
-      hiddenData:
-        diff: @dmp.diff_prettyHtml diff
-    ]

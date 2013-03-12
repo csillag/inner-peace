@@ -117,9 +117,16 @@ class SearchController
 
       if @canSearch and @searchTerm
         switch @matchEngine
-          when "exact" then @sr = @domMatcher.searchExact @searchTerm, @searchDistinct, @searchCaseSensitive
-          when "regex" then @sr = @domMatcher.searchRegex @searchTerm, @searchCaseSensitive
-          when "fuzzy" then @sr = @domMatcher.searchFuzzy @searchTerm, @searchPos, @searchCaseSensitive, @matchDistance, @matchThreshold / 100
+          when "exact"
+            @sr = @domMatcher.searchExact @searchTerm, @searchDistinct, @searchCaseSensitive
+          when "regex"
+            @sr = @domMatcher.searchRegex @searchTerm, @searchCaseSensitive
+          when "fuzzy"
+            options =
+              matchDistance: @matchDistance,
+              matchThreshold: @matchThreshold / 100
+              withDiff: true        
+            @sr = @domMatcher.searchFuzzy @searchTerm, @searchPos, @searchCaseSensitive, null, options
           else delete @sr
         @markAll()
       else

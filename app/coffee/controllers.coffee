@@ -75,14 +75,16 @@ class SearchController
       @$watch 'matchThreshold', => if @matchEngine is "fuzzy" then @search()
       @$watch 'foundAction', => if @singleMode then @moveMark 0 else @markAll()
 
+    $scope.scanProgress = (progress) -> console.log "Scanning: " + progress
+
     $scope.dataChanged = ->
       # wait for the browser to render the DOM for the new HTML
       $timeout =>
         @domMatcher.documentChanged()
-        r = @domMatcher.scan()
-        @traverseTime = r.time
-        @canSearch = true
-        @search()        
+        @domMatcher.scan @scanProgress, (r) => @$apply =>
+          @traverseTime = r.time
+          @canSearch = true
+          @search()        
 
     $scope.render = ->
       #this function is called from a child scope, so we can't replace $scope with @ here.     
@@ -125,7 +127,7 @@ class SearchController
             options =
               matchDistance: @matchDistance,
               matchThreshold: @matchThreshold / 100
-              withDiff: true        
+              withDiff: true
             @sr = @domMatcher.searchFuzzy @searchTerm, @searchPos, @searchCaseSensitive, null, options
           else delete @sr
         @markAll()

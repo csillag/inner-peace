@@ -1,10 +1,8 @@
 class window.DomTextMapper
 
-  USE_THEAD_TBODY_WORKAROUND = true
   USE_TABLE_TEXT_WORKAROUND = true
-  USE_OL_WORKAROUND = true
-  USE_CAPTION_WORKAROUND = true
   USE_EMPTY_TEXT_WORKAROUND = true
+  SELECT_CHILDREN_INSTEAD = ["thead", "tbody", "ol", "a", "caption", "p"]
   CONTEXT_LEN = 32
   SCAN_JOB_LENGTH_MS = 100
 
@@ -72,7 +70,7 @@ class window.DomTextMapper
     @lastDOMChange = @timestamp()
 #    console.log "Registered document change."
 
-  # Scan the document
+  # Scan the document - Sync version
   #
   # Traverses the DOM, collects various information, and
   # creates mappings between the string indices
@@ -84,32 +82,69 @@ class window.DomTextMapper
   #   node: reference to the DOM node
   #   content: the text content of the node, as rendered by the browser
   #   length: the length of the next content
-  scan: (onProgress, onFinished) ->
+  scanSync: ->
+    if @domStableSince @lastScanned
+      # We have a valid paths structure!
+#      console.log "We have a valid DOM structure cache."
+      return @path
+
+#    console.log "No valid cache, will have to do a scan."
+    startTime = @timestamp()
+    @path = {}
+    pathStart = @getDefaultPath()
+    task = node: @pathStartNode, path: pathStart
+    @finishTraverseSync task
+    t1 = @timestamp()
+    console.log "Phase I (Path traversal) took " + (t1 - startTime) + " ms."
+
+    node = @path[pathStart].node
+    @collectPositions node, pathStart, null, 0, 0
+    @lastScanned = @timestamp()
+    @corpus = @path[pathStart].content
+#    console.log "Corpus is: " + @corpus
+
+    t2 = @timestamp()    
+    console.log "Phase II (offset calculation) took " + (t2 - t1) + " ms."
+
+    @path
+
+    null
+
+  # Scan the document - sync version
+  #
+  # Traverses the DOM, collects various information, and
+  # creates mappings between the string indices
+  # (as appearing in the rendered text) and the DOM elements.  
+  # 
+  # An map is returned, where the keys are the paths, and the
+  # values are objects with info about those parts of the DOM.
+  #   path: the valid path value
+  #   node: reference to the DOM node
+  #   content: the text content of the node, as rendered by the browser
+  #   length: the length of the next content
+  scanAsync: (onProgress, onFinished) ->
     if @domStableSince @lastScanned
       # We have a valid paths structure!
 #      console.log "We have a valid DOM structure cache."
       onFinished @path
 
 #    console.log "No valid cache, will have to do a scan."
-    startTime = @timestamp()
-    @saveSelection()
+#    startTime = @timestamp()
     @path = {}
-
     pathStart = @getDefaultPath()
     task = node: @pathStartNode, path: pathStart
-    @finishTraverse task, onProgress, =>
-      t1 = @timestamp()
-      console.log "Phase I (Path traversal) took " + (t1 - startTime) + " ms."
+    @finishTraverseAsync task, onProgress, =>
+#      t1 = @timestamp()
+#      console.log "Phase I (Path traversal) took " + (t1 - startTime) + " ms."
 
       node = @path[pathStart].node
       @collectPositions node, pathStart, null, 0, 0
-      @restoreSelection()
       @lastScanned = @timestamp()
       @corpus = @path[pathStart].content
 #      console.log "Corpus is: " + @corpus
 
-      t2 = @timestamp()    
-      console.log "Phase II (offset calculation) took " + (t2 - t1) + " ms."
+#      t2 = @timestamp()    
+#      console.log "Phase II (offset calculation) took " + (t2 - t1) + " ms."
 
       onFinished @path
 
@@ -153,7 +188,7 @@ class window.DomTextMapper
         delete @path[p]        
 
       task = path:path, node: node
-      @finishTraverse task, null, =>
+      @finishTraverseAsync task, null, =>
 #        console.log "Done. Collecting new path info..."
 
 #        console.log "Done. Updating mappings..."
@@ -203,7 +238,10 @@ class window.DomTextMapper
     result
 
   # Return info for a given node in the DOM
-  getInfoForNode: (node) -> @getInfoForPath @getPathTo node
+  getInfoForNode: (node) ->
+    unless node?
+      throw new Error "Called getInfoForNode(node) with null node!"
+    @getInfoForPath @getPathTo node
 
   # Get the matching DOM elements for a given set of charRanges
   # (Calles getMappingsForCharRange for each element in the givenl ist)
@@ -395,7 +433,9 @@ class window.DomTextMapper
   getPathTo: (node) ->
     xpath = '';
     while node != @rootNode
-      xpath = (@getPathSegment node) + "/" + xpath
+      unless node?
+        throw new Error "Called getPathTo on a node which was not a descendant of @rootNode. " + @rootNode
+      xpath = (@getPathSegment node) + '/' + xpath
       node = node.parentNode
     xpath = (if @rootNode.ownerDocument? then './' else '/') + xpath
     xpath = xpath.replace /\/$/, ''
@@ -405,7 +445,7 @@ class window.DomTextMapper
   # about a node, and generating further tasks for it's child nodes.
   executeTraverseTask: (task) ->
     node = task.node
-    path = task.path
+    @underTraverse = path = task.path
     invisiable = task.invisible ? false
     verbose  = task.verbose ? false
 #    console.log "Executing traverse task for path " + path
@@ -443,41 +483,39 @@ class window.DomTextMapper
           verbose: verbose
     null
 
-  # Run a round of DOM traverse tasks.
-  runTraverseRound: ->
-#    console.log "In traverse round"
-    roundStart = @timestamp()
-    tasksDone = 0
-    while @traverseTasks.length and (@timestamp() - roundStart < SCAN_JOB_LENGTH_MS)
-#      console.log "Queue length is: " + @traverseTasks.length
-      task = @traverseTasks.pop()
-      @executeTraverseTask task
-      tasksDone += 1
-      # for leaf nodes,        
-      unless task.node.hasChildNodes()
-        # count the chars we have covered
-        @traverseCoveredChars += @path[task.path].length
-
-#      console.log "Round covered " + tasksDone + " tasks " +
-#        "in " + (@timestamp() - roundStart) + " ms." +
-#        " Covered chars: " + done
-
-    if @traverseOnProgress?
-      progress = @traverseCoveredChars / @traverseTotalLength        
-      @traverseOnProgress progress
 
   # Run a round of DOM traverse tasks, and schedule the next one
-  runTraverseRoundsUntilReady: (mapper) ->
-    # Run one round        
+  runTraverseRounds: ->
     try
-      mapper.runTraverseRound()
+      @saveSelection()
+      roundStart = @timestamp()
+      tasksDone = 0
+      while @traverseTasks.length and (@timestamp() - roundStart < SCAN_JOB_LENGTH_MS)
+#        console.log "Queue length is: " + @traverseTasks.length
+        task = @traverseTasks.pop()
+        @executeTraverseTask task
+        tasksDone += 1
+        # for leaf nodes,        
+        unless task.node.hasChildNodes()
+          # count the chars we have covered
+          @traverseCoveredChars += @path[task.path].length
+
+#        console.log "Round covered " + tasksDone + " tasks " +
+#          "in " + (@timestamp() - roundStart) + " ms." +
+#          " Covered chars: " + done
+
+      @restoreSelection()
+      if @traverseOnProgress?
+        progress = @traverseCoveredChars / @traverseTotalLength        
+        @traverseOnProgress progress
+
       # Is there still more work to do?
-      if mapper.traverseTasks.length
+      if @traverseTasks.length
         # OK, scheduling next round
-        window.setTimeout mapper.runTraverseRoundsUntilReady, 0, mapper
+        window.setTimeout => @runTraverseRounds()
       else
         # We are ready!
-        mapper.traverseOnFinished()
+        @traverseOnFinished()
      catch exception
       console.log "OOps. Internal error:"
       console.log exception
@@ -485,16 +523,36 @@ class window.DomTextMapper
         
   # Execute an full DOM traverse compaign,
   # starting with the given task.
-  finishTraverse: (rootTask, onProgress, onFinished) ->
+  finishTraverseSync: (rootTask) ->
     if @traverseTasks? and @traverseTasks.size
       throw new Error "Error: a DOM traverse is already in progress!"
-    @traverseTasks = []    
+    @traverseTasks = []
+    @saveSelection()
     @executeTraverseTask rootTask
+
+    @traverseTotalLength = @path[rootTask.path].length
+    @traverseCoveredChars = 0
+
+    while @traverseTasks.length
+      @executeTraverseTask @traverseTasks.pop()
+    @restoreSelection()
+
+  # Execute an full DOM traverse compaign,
+  # starting with the given task.
+  finishTraverseAsync: (rootTask, onProgress, onFinished) ->
+    if @traverseTasks? and @traverseTasks.size
+      throw new Error "Error: a DOM traverse is already in progress!"
+    @traverseTasks = []
+    @saveSelection()
+    @executeTraverseTask rootTask
+    @restoreSelection()
     @traverseTotalLength = @path[rootTask.path].length
     @traverseOnProgress = onProgress
     @traverseCoveredChars = 0
     @traverseOnFinished = onFinished
-    @runTraverseRoundsUntilReady this
+
+    # Schedule first round
+    window.setTimeout => @runTraverseRounds()
 
 
   getBody: -> (@rootWin.document.getElementsByTagName "body")[0]
@@ -535,7 +593,9 @@ class window.DomTextMapper
 
   # Select the given node (for visual identification),
   # and optionally scroll to it
-  selectNode: (node, scroll = false) ->  
+  selectNode: (node, scroll = false) ->
+    unless node?
+      throw new Error "Called selectNode with null node!"
     sel = @rootWin.getSelection()
 
     # clear the selection
@@ -556,13 +616,10 @@ class window.DomTextMapper
     # do various other things. See bellow.
 
     if node.nodeType is Node.ELEMENT_NODE and node.hasChildNodes() and
-        ((USE_THEAD_TBODY_WORKAROUND and node.tagName.toLowerCase() in
-          ["thead", "tbody"]) or
-        (USE_OL_WORKAROUND and node.tagName.toLowerCase() is "ol") or
-        (USE_CAPTION_WORKAROUND and node.tagName.toLowerCase() is "caption"))
-      # This is a thead or a tbody, and selection those is problematic,
+        node.tagName.toLowerCase() in SELECT_CHILDREN_INSTEAD
+      # This is an element where direct selection sometimes fails,
       # because if the WebKit bug.
-      # (Sometimes it selects nothing, sometimes it selects the whole table.)
+      # (Sometimes it selects nothing, sometimes it selects something wrong.)
       # So we select directly the children instead.
       children = node.childNodes
       realRange.setStartBefore children[0]
@@ -586,12 +643,18 @@ class window.DomTextMapper
           # If this is the case, then it's OK.
           unless USE_EMPTY_TEXT_WORKAROUND and @isWhitespace node
             # No, this is not the case. Then this is an error.
-            throw exception
+            console.log "Warning: failed to scan element @ " + @underTraverse
+            console.log "Content is: " + node.innerHTML
+            console.log "We won't be able to properly anchor to any text inside this element."
+#            throw exception
     if scroll
       sn = node
-      while not sn.scrollIntoViewIfNeeded?
+      while sn? and not sn.scrollIntoViewIfNeeded?
         sn = sn.parentNode
-      sn.scrollIntoViewIfNeeded()
+      if sn?
+        sn.scrollIntoViewIfNeeded()
+      else
+        console.log "Failed to scroll to element. (Browser does not support scrollIntoViewIfNeeded?)"
     sel
 
   # Read and convert the text of the current selection.
@@ -682,8 +745,7 @@ class window.DomTextMapper
   # Returns:
   #    the first character offset position in the content of this node's
   #    parent node that is not accounted for by this node
-  collectPositions: (node, path, parentContent = null,
-      parentIndex = 0, index = 0) ->
+  collectPositions: (node, path, parentContent = null, parentIndex = 0, index = 0) ->
 #    console.log "Scanning path " + path    
 #    content = @getNodeContent node, false
 
@@ -741,4 +803,13 @@ class window.DomTextMapper
 
   # Decides whether a given node is a text node that only contains whitespace
   isWhitespace: (node) ->
-    node.nodeType is Node.TEXT_NODE and WHITESPACE.test node.data
+    result = switch node.nodeType
+      when Node.TEXT_NODE
+        WHITESPACE.test node.data
+      when Node.ELEMENT_NODE
+        mightBeEmpty = true
+        for child in node.childNodes
+          mightBeEmpty = mightBeEmpty and @isWhitespace child
+        mightBeEmpty
+      else false
+    result

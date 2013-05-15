@@ -27,21 +27,33 @@ class window.DomTextMatcher
   # This means that subsequent calls can not safely re-use previously cached
   # data structures, so some calculations will be necessary again.
   #
-  # The usage of this feature is not mandatorry; if not receiving change
+  # The usage of this feature is not mandatory; if not receiving change
   # notifications, the library will just assume that the document can change
   # anythime, and therefore will not assume any stability.
   documentChanged: -> @mapper.documentChanged()
 
-  # The available paths which can be searched
+  # Scan the document, so that it can be searched - Async version
   #
   # A map is returned, where the keys are the paths, and the values hold
   # the collected informatino about the given sub-trees of the DOM.
-  scan: (onProgress, onFinished) ->
+  scanAsync: (onProgress, onFinished) ->
+    unless onFinished?
+      throw new Error "Called scan() with no onFinished argument!"
     t0 = @timestamp()
-    @mapper.scan onProgress, (data) =>
+    @mapper.scanAsync onProgress, (data) =>
       t1 = @timestamp()
       onFinished time: t1 - t0, data: data
     null
+
+  # Scan the document, so that it can be searched - Sync version
+  #
+  # A map is returned, where the keys are the paths, and the values hold
+  # the collected informatino about the given sub-trees of the DOM.
+  scanSync: ->
+    t0 = @timestamp()
+    data = @mapper.scanSync()
+    t1 = @timestamp()
+    return time: t1 - t0, data: data
 
   # Return the default path
   getDefaultPath: -> @mapper.getDefaultPath()
@@ -111,8 +123,7 @@ class window.DomTextMatcher
   # 
   # For the details about the returned data structure,
   # see the documentation of the search() method.
-  searchFuzzy: (pattern, pos,
-      caseSensitive = false, path = null, options = {}) ->
+  searchFuzzy: (pattern, pos, caseSensitive = false, path = null, options = {}) ->
     @ensureDMP()
     @dmp.setMatchDistance options.matchDistance ? 1000
     @dmp.setMatchThreshold options.matchThreshold ? 0.5
@@ -123,9 +134,7 @@ class window.DomTextMatcher
   # Used to even out some browser differences.  
   normalizeString: (string) -> string.replace /\s{2,}/g, " "
 
-  searchFuzzyWithContext: (prefix, suffix, pattern,
-      expectedStart = null, expectedEnd = null, caseSensitive = false,
-      path = null, options = {}) ->
+  searchFuzzyWithContext: (prefix, suffix, pattern, expectedStart = null, expectedEnd = null, caseSensitive = false, path = null, options = {}) ->
     @ensureDMP()
 
     # No context, to joy
@@ -198,7 +207,12 @@ class window.DomTextMatcher
         analysis.exact or # "Found text matches exactly to pattern"
         (analysis.comparison.errorLevel <= matchThreshold) # still acceptable
       mappings = @mapper.getMappingsForCharRange prefixEnd, suffixStart
-      match = $.extend {}, charRange, analysis, mappings
+
+      # Collect the results
+      match = {}
+      for obj in [charRange, analysis, mappings]
+        for k, v of obj
+          match[k] = v
       return matches: [match]
 
 #    console.log "Rejecting the match, because error level is too high. (" +
@@ -246,15 +260,22 @@ class window.DomTextMatcher
     textMatches = matcher.search @mapper.corpus, pattern, pos, options
     t2 = @timestamp()
 
-    # Collect the mappings
-
     matches = []
     for textMatch in textMatches
       do (textMatch) =>
+        # See how good a match we have        
         analysis = @analyzeMatch pattern, textMatch, fuzzyComparison
+        
+        # Collect the mappings        
         mappings = @mapper.getMappingsForCharRange textMatch.start,
             textMatch.end
-        match = $.extend {}, textMatch, analysis, mappings
+
+        # Collect the results
+        match = {}
+        for obj in [textMatch, analysis, mappings]
+          for k, v of obj
+            match[k] = v
+        
         matches.push match
         null
     t3 = @timestamp()

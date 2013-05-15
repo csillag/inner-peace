@@ -1,5 +1,7 @@
 #Controllers
 
+USE_ASYNC_SCANNING = true
+
 class SearchController
   this.$inject = ['$document', '$scope', '$timeout', '$http', 'domTextMatcher', 'domTextHiliter']
   constructor: ($document, $scope, $timeout, $http, domTextMatcher, domTextHiliter) ->
@@ -81,7 +83,16 @@ class SearchController
       # wait for the browser to render the DOM for the new HTML
       $timeout =>
         @domMatcher.documentChanged()
-        @domMatcher.scan @scanProgress, (r) => @$apply =>
+
+        if USE_ASYNC_SCANNING
+          console.log "Initiating deferred (asynchronous) scanning"
+          @domMatcher.scanAsync @scanProgress, (r) => @$apply =>
+            @traverseTime = r.time
+            @canSearch = true
+            @search()
+        else
+          console.log "Initiating immediate (synchronous) scannig."
+          r = @domMatcher.scanSync()
           @traverseTime = r.time
           @canSearch = true
           @search()        

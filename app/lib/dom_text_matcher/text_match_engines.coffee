@@ -9,6 +9,10 @@ class window.DTM_ExactMatcher
   setCaseSensitive: (value) -> @caseSensitive = value
         
   search: (text, pattern) ->
+    unless text?
+      throw new Error "Called search with null text!"
+    unless pattern?
+      throw new Error "Called search with null pattern!"
 #    console.log "Searching for '" + pattern + "' in '" + text + "'."
     pLen = pattern.length
     results = []
@@ -39,6 +43,10 @@ class window.DTM_RegexMatcher
   setCaseSensitive: (value) -> @caseSensitive = value
 
   search: (text, pattern) ->
+    unless text?
+      throw new Error "Called search with null text!"
+    unless pattern?
+      throw new Error "Called search with null pattern!"
     re = new RegExp pattern, if @caseSensitive then "g" else "gi"
     { start: m.index, end: m.index + m[0].length } while m = re.exec text
                 
@@ -103,6 +111,10 @@ class window.DTM_DMPMatcher
   #
   # If no match is found, the function returns null.
   search: (text, pattern, expectedStartLoc = 0, options = {}) ->
+    unless text?
+      throw new Error "Called search with null text!"
+    unless pattern?
+      throw new Error "Called search with null pattern!"
 #    console.log "In dtm search. text: '" + text + "', pattern: '" + pattern +
 #       "', expectedStartLoc: " + expectedStartLoc + ", options:"
 #    console.log options

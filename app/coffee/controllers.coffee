@@ -1,6 +1,11 @@
 #Controllers
 
-USE_ASYNC_SCANNING = true
+# Supported scanning strategies:
+#   "sync"
+#   "asyncCallback"
+#   "deferredOromise"
+
+SCAN_STRATEGY = "deferredPromise"
 
 class SearchController
   this.$inject = ['$document', '$scope', '$timeout', '$http', 'domTextMatcher', 'domTextHiliter']
@@ -84,18 +89,25 @@ class SearchController
       $timeout =>
         @domMatcher.documentChanged()
 
-        if USE_ASYNC_SCANNING
-          console.log "Initiating deferred (asynchronous) scanning"
-          @domMatcher.scanAsync @scanProgress, (r) => @$apply =>
+        switch SCAN_STRATEGY
+          when "deferredPromise"
+            console.log "Initiating deferred scanning (with promise)"
+            @domMatcher.scanPromise().progress(@scanProgress).done (r) =>
+              @traverseTime = r.time
+              @canSearch = true
+              @search()        
+          when "asyncCallback"
+            console.log "Initiating deferred scanning (with callback)"
+            @domMatcher.scanAsync @scanProgress, (r) => @$apply =>
+              @traverseTime = r.time
+              @canSearch = true
+              @search()
+          when "sync"
+            console.log "Initiating immediate (synchronous) scannig."
+            r = @domMatcher.scanSync()
             @traverseTime = r.time
             @canSearch = true
-            @search()
-        else
-          console.log "Initiating immediate (synchronous) scannig."
-          r = @domMatcher.scanSync()
-          @traverseTime = r.time
-          @canSearch = true
-          @search()        
+            @search()        
 
     $scope.render = ->
       #this function is called from a child scope, so we can't replace $scope with @ here.     

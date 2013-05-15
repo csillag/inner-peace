@@ -45,6 +45,16 @@ class window.DomTextMatcher
       onFinished time: t1 - t0, data: data
     null
 
+  # Scan the document, so that it can be searched - Deferred promise version
+  # You can use this as a wrapper around scanAsync,
+  # if you want a JQuery deferred promise.
+  scanPromise: ->
+    dfd = new jQuery.Deferred()
+    onProgress = (data) => dfd.notify data
+    onFinished = (data) => dfd.resolve data
+    @scanAsync onProgress, onFinished
+    return dfd.promise()
+
   # Scan the document, so that it can be searched - Sync version
   #
   # A map is returned, where the keys are the paths, and the values hold

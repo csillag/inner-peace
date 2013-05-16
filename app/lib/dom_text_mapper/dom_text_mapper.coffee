@@ -13,7 +13,7 @@ class window.DomTextMapper
 #    dm = @instances[0]
 #    console.log "Node @ " + (dm.getPathTo node) + " has changed: " + reason
     for instance in @instances
-      instance.performUpdateOnNode node
+      instance.performSyncUpdateOnNode node
     null
 
   constructor: ->
@@ -93,7 +93,9 @@ class window.DomTextMapper
     @path = {}
     pathStart = @getDefaultPath()
     task = node: @pathStartNode, path: pathStart
+    @saveSelection()
     @finishTraverseSync task
+    @restoreSelection()
     t1 = @timestamp()
     console.log "Phase I (Path traversal) took " + (t1 - startTime) + " ms."
 
@@ -159,15 +161,18 @@ class window.DomTextMapper
     node or= @lookUpNode info.path
     @selectNode node, scroll
  
-  performUpdateOnNode: (node, escalating = false) ->
-    unless node? then throw new Error "Called performUpdate with a null node!"
+  performSyncUpdateOnNode: (node, escalating = false) ->
+    unless node?
+      throw new Error "Called performSyncUpdateOnOde with a null node!"
     unless @path? then return #We don't have data yet. Not updating.
     startTime = @timestamp()
     unless escalating then @saveSelection()
     path = @getPathTo node
     pathInfo = @path[path]
     unless pathInfo?
-      @performUpdateOnNode node.parentNode, true
+      # This node seems to be have changed.
+      # Scan the parten instead.
+      @performSyncUpdateOnNode node.parentNode, true
       unless escalating then @restoreSelection()        
       return
 #    console.log "Performing update on node @ path " + path
@@ -188,26 +193,27 @@ class window.DomTextMapper
         delete @path[p]        
 
       task = path:path, node: node
-      @finishTraverseAsync task, null, =>
-#        console.log "Done. Collecting new path info..."
+      @finishTraverseSync task
 
-#        console.log "Done. Updating mappings..."
+#      console.log "Done. Collecting new path info..."
 
-        if pathInfo.node is @pathStartNode
-          console.log "Ended up rescanning the whole doc."
-          @collectPositions node, path, null, 0, 0
+#      console.log "Done. Updating mappings..."
+
+      if pathInfo.node is @pathStartNode
+        console.log "Ended up rescanning the whole doc."
+        @collectPositions node, path, null, 0, 0
+      else
+        parentPath = @parentPath path
+        parentPathInfo = @path[parentPath]
+        unless parentPathInfo?
+          throw new Error "While performing update on node " + path +
+             ", no path info found for parent path: " + parentPath
+        oldIndex = if node is node.parentNode.firstChild
+          0
         else
-          parentPath = @parentPath path
-          parentPathInfo = @path[parentPath]
-          unless parentPathInfo?
-            throw new Error "While performing update on node " + path +
-                ", no path info found for parent path: " + parentPath
-          oldIndex = if node is node.parentNode.firstChild
-            0
-          else
-            @path[@getPathTo node.previousSibling].end - parentPathInfo.start
-          @collectPositions node, path, parentPathInfo.content,
-              parentPathInfo.start, oldIndex
+          @path[@getPathTo node.previousSibling].end - parentPathInfo.start
+        @collectPositions node, path, parentPathInfo.content,
+            parentPathInfo.start, oldIndex
         
 #      console.log "Data update took " + (@timestamp() - startTime) + " ms."
 
@@ -222,7 +228,7 @@ class window.DomTextMapper
           parentPath = @parentPath path
 #          console.log "Node has no parent, will look up " + parentPath
           @lookUpNode parentPath
-        @performUpdateOnNode parentNode, true
+        @performSyncUpdateOnNode parentNode, true
       else
         throw new Error "Can not keep up with the changes,
  since even the node configured as path start node was replaced."
@@ -527,7 +533,6 @@ class window.DomTextMapper
     if @traverseTasks? and @traverseTasks.size
       throw new Error "Error: a DOM traverse is already in progress!"
     @traverseTasks = []
-    @saveSelection()
     @executeTraverseTask rootTask
 
     @traverseTotalLength = @path[rootTask.path].length
@@ -535,7 +540,6 @@ class window.DomTextMapper
 
     while @traverseTasks.length
       @executeTraverseTask @traverseTasks.pop()
-    @restoreSelection()
 
   # Execute an full DOM traverse compaign,
   # starting with the given task.
@@ -750,6 +754,14 @@ class window.DomTextMapper
 #    content = @getNodeContent node, false
 
     pathInfo = @path[path]
+    unless pathInfo?
+#      throw new Error "Error: I have no info about " + path + ". This should not happen."
+      console.log "Warning: have no info about this node:"
+      console.log node
+      console.log "This probably was _not_ here last time."
+      console.log "Expect problems."
+      return index
+
     content = pathInfo?.content
 
     if not content? or content is ""
